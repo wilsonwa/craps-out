@@ -48,6 +48,9 @@ body {
 .game-header {
   background: linear-gradient(135deg, var(--bg-darker), #1e1e3a);
   padding: 0.75rem 1.5rem;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -182,6 +185,8 @@ body {
   font: inherit;
   position: relative;
   transition: background 0.15s, box-shadow 0.15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bet-area:hover {
@@ -477,40 +482,68 @@ body {
 
 /* ===== ROW 3: FIELD area ===== */
 .field-area {
+  border-bottom: 2px solid var(--felt-border);
+}
+
+/* Three-section field row */
+.field-row {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 65px;
+}
+
+.field-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 65px;
-  border-bottom: 2px solid var(--felt-border);
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.5rem;
   gap: 0.15rem;
+  min-height: 65px;
 }
 
-.field-content {
+.field-left,
+.field-right {
+  flex: 0 0 auto;
+  width: 22%;
+  border-right: 1px solid var(--felt-border);
+}
+
+.field-right {
+  border-right: none;
+  border-left: 1px solid var(--felt-border);
+}
+
+.field-center {
+  flex: 1;
+}
+
+.field-nums {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 .field-number {
   color: white;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .field-special {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: white;
   color: var(--text-dark);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   border: 2px solid #555;
 }
@@ -519,20 +552,13 @@ body {
   color: var(--felt-border);
   font-size: 1.2rem;
   font-weight: 700;
-  margin: 0 0.5rem;
-}
-
-.field-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--felt-border);
 }
 
 .field-payout {
   color: var(--felt-border);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
+  text-align: center;
 }
 
 /* ===== ROW 4: Don't Pass Bar ===== */
@@ -1612,6 +1638,9 @@ body {
   background: linear-gradient(135deg, var(--bg-darker), #1e1e3a);
   border-top: 2px solid var(--gold);
   padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
   text-align: center;
   color: #888;
   font-size: 0.9rem;
@@ -1621,15 +1650,14 @@ body {
 @media (max-width: 768px) {
   .game-header {
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
     text-align: center;
   }
 
   .game-header h1 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
 
-  /* Stack table layout vertically */
   .table-layout {
     flex-direction: column;
   }
@@ -1709,14 +1737,18 @@ body {
     font-size: 0.6rem;
   }
 
+  .field-section {
+    min-height: 60px;
+  }
+
   .field-number {
     font-size: 0.9rem;
   }
 
   .field-special {
-    width: 24px;
-    height: 24px;
-    font-size: 0.8rem;
+    width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
   }
 
   .big-bets {
@@ -1742,10 +1774,11 @@ body {
 
   .btn {
     flex: 1;
+    min-height: 44px;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .chip-btn {
+    min-height: 44px;
   }
 
   .chip {
@@ -1761,17 +1794,26 @@ body {
   }
 }
 
-@media (max-width: 480px) {
+/* iPhone-optimized: 430px and narrower */
+@media (max-width: 430px) {
+  html {
+    font-size: 14px;
+  }
+
+  .game-header {
+    gap: 0.35rem;
+  }
+
   .game-header h1 {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
 
   .dont-come-bar {
-    width: 40px;
+    width: 38px;
   }
 
   .dont-come-bar .bet-label {
-    font-size: 0.45rem;
+    font-size: 0.44rem;
   }
 
   .number-label {
@@ -1779,7 +1821,7 @@ body {
   }
 
   .number-bet-place {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .number-bet-lay {
@@ -1787,7 +1829,7 @@ body {
   }
 
   .lay-label {
-    font-size: 0.45rem;
+    font-size: 0.44rem;
   }
 
   .number-bet-buy {
@@ -1795,15 +1837,15 @@ body {
   }
 
   .buy-label {
-    font-size: 0.5rem;
+    font-size: 0.48rem;
   }
 
   .put-bet {
-    width: 35px;
+    width: 34px;
   }
 
   .put-label {
-    font-size: 0.5rem;
+    font-size: 0.48rem;
   }
 
   .come-label {
@@ -1819,29 +1861,38 @@ body {
   }
 
   .pass-area {
-    min-height: 45px;
+    min-height: 44px;
   }
 
-  .field-area {
-    min-height: 50px;
+  .field-row {
+    min-height: 56px;
+  }
+
+  .field-section {
+    min-height: 56px;
+    padding: 0.25rem 0.3rem;
   }
 
   .field-number {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
 
   .field-special {
     width: 20px;
     height: 20px;
-    font-size: 0.65rem;
+    font-size: 0.68rem;
   }
 
   .field-title {
-    font-size: 0.85rem;
+    font-size: 1rem;
+  }
+
+  .field-payout {
+    font-size: 0.55rem;
   }
 
   .big-bets {
-    width: 35px;
+    width: 34px;
   }
 
   .big-bet .bet-label {
@@ -1849,16 +1900,16 @@ body {
   }
 
   .prop-sidebar .prop-bet {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0.3rem;
   }
 
   .prop-bet .bet-label {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
   }
 
   .prop-bet .payout-label {
-    font-size: 0.55rem;
+    font-size: 0.52rem;
   }
 
   .die {
@@ -1871,13 +1922,15 @@ body {
   }
 
   .chip-btn {
-    padding: 0.4rem 0.75rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
+    min-height: 44px;
   }
 
   .btn {
-    padding: 0.6rem 1rem;
+    padding: 0.65rem 1rem;
     font-size: 0.9rem;
+    min-height: 44px;
   }
 
   .chip {
@@ -1893,564 +1946,3 @@ body {
   }
 }
 
-/* ===== STRATEGY CONTROLS ===== */
-.strategy-controls {
-  background: linear-gradient(135deg, #222240, #2a2a4a);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin: 0.5rem 0;
-}
-
-.strategy-controls h3 {
-  color: var(--gold);
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.strategy-selector,
-.seed-input {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.strategy-selector label,
-.seed-input label {
-  color: var(--text-light);
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.strategy-selector select,
-.seed-input input {
-  padding: 0.6rem;
-  background: #1a1a2e;
-  border: 1px solid #444;
-  border-radius: 4px;
-  color: var(--text-light);
-  font-size: 0.9rem;
-}
-
-.strategy-selector select:focus,
-.seed-input input:focus {
-  outline: none;
-  border-color: var(--gold);
-  box-shadow: 0 0 8px rgba(212, 168, 67, 0.2);
-}
-
-.seed-input {
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-
-.seed-input input {
-  flex: 1;
-  min-width: 150px;
-}
-
-#btn-apply-seed,
-#btn-random-seed {
-  padding: 0.6rem 1rem;
-  background: var(--gold);
-  color: var(--text-dark);
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#btn-apply-seed:hover,
-#btn-random-seed:hover {
-  background: var(--gold-light);
-}
-
-#btn-apply-seed:disabled,
-#btn-random-seed:disabled {
-  background: #666;
-  color: #aaa;
-  cursor: not-allowed;
-}
-
-.session-info {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-left: 3px solid var(--gold);
-  border-radius: 4px;
-}
-
-.session-info p {
-  margin: 0.3rem 0;
-  font-size: 0.95rem;
-  color: var(--text-light);
-}
-
-.session-info span {
-  color: var(--gold);
-  font-weight: 600;
-}
-
-.strategy-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.btn-run-strategy,
-.btn-stop-strategy {
-  flex: 1;
-  min-width: 150px;
-  padding: 0.75rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-run-strategy {
-  background: var(--success);
-  color: white;
-}
-
-.btn-run-strategy:hover:not(:disabled) {
-  background: #2a9645;
-  box-shadow: 0 4px 12px rgba(63, 185, 80, 0.3);
-}
-
-.btn-run-strategy:disabled {
-  background: #555;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.btn-stop-strategy {
-  background: var(--danger);
-  color: white;
-}
-
-.btn-stop-strategy:hover:not(:disabled) {
-  background: #c73030;
-  box-shadow: 0 4px 12px rgba(217, 64, 64, 0.3);
-}
-
-.btn-stop-strategy:disabled {
-  background: #555;
-  color: #999;
-  cursor: not-allowed;
-}
-
-/* ===== STRATEGY GRAPH ===== */
-.strategy-graph {
-  background: linear-gradient(135deg, #222240, #2a2a4a);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin: 0.5rem 0;
-}
-
-.strategy-graph h3 {
-  color: var(--gold);
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.graph-container {
-  background: #1a1a2e;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 1rem;
-  position: relative;
-  height: 400px;
-  max-width: 100%;
-}
-
-.graph-container canvas {
-  max-width: 100%;
-  height: 100%;
-}
-
-/* ============================================
-   AI TRAINING SECTION
-   ============================================ */
-
-.ai-training {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-  color: #fff;
-}
-
-.ai-training h3 {
-  color: #d4af37;
-  margin-top: 0;
-  text-align: center;
-  font-size: 1.5em;
-}
-
-.ai-config {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin: 20px 0;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-}
-
-.config-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.config-group label {
-  color: #d4af37;
-  font-weight: bold;
-  margin-bottom: 5px;
-  font-size: 0.9em;
-}
-
-.config-group input {
-  padding: 8px 12px;
-  background: #333;
-  border: 1px solid #555;
-  color: #fff;
-  border-radius: 4px;
-  font-size: 1em;
-}
-
-.config-group input:focus {
-  outline: none;
-  border-color: #d4af37;
-  background: #404040;
-}
-
-.ai-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.ai-actions button {
-  padding: 10px 20px;
-  background: #d4af37;
-  color: #000;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 1em;
-  transition: all 0.3s ease;
-}
-
-.ai-actions button:hover:not(:disabled) {
-  background: #e5c158;
-  transform: scale(1.05);
-}
-
-.ai-actions button:disabled {
-  background: #555;
-  color: #999;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.ai-status {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 20px;
-  margin: 20px 0;
-}
-
-.training-progress {
-  margin-bottom: 20px;
-}
-
-.training-progress p {
-  color: #d4af37;
-  font-weight: bold;
-  margin: 0 0 10px 0;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 24px;
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4CAF50 0%, #81C784 100%);
-  width: 0%;
-  transition: width 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #000;
-  font-size: 0.75em;
-  font-weight: bold;
-}
-
-.training-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 15px;
-}
-
-.training-stats .stat-item {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 4px;
-  border-left: 3px solid #d4af37;
-}
-
-.training-stats .stat-label {
-  color: #bbb;
-  font-size: 0.85em;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.training-stats .stat-value {
-  color: #4CAF50;
-  font-weight: bold;
-  font-size: 1.2em;
-}
-
-.ai-fitness-graph {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 15px;
-  margin: 20px 0;
-}
-
-.ai-fitness-graph h4 {
-  color: #d4af37;
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-
-.ai-fitness-graph canvas {
-  display: block;
-  width: 100% !important;
-  height: 300px !important;
-  max-height: 300px;
-}
-
-.ai-test-section {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 15px;
-  margin: 20px 0;
-}
-
-.ai-test-section h4 {
-  color: #d4af37;
-  margin-top: 0;
-}
-
-.test-controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.test-controls input {
-  flex: 1;
-  padding: 8px 12px;
-  background: #333;
-  border: 1px solid #555;
-  color: #fff;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-.test-controls input:focus {
-  outline: none;
-  border-color: #d4af37;
-  background: #404040;
-}
-
-.test-controls button {
-  padding: 8px 15px;
-  background: #d4af37;
-  color: #000;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: all 0.3s ease;
-}
-
-.test-controls button:hover {
-  background: #e5c158;
-  transform: scale(1.03);
-}
-
-.ai-test-result {
-  background: rgba(76, 175, 80, 0.1);
-  border: 1px solid #4CAF50;
-  border-radius: 4px;
-  padding: 10px;
-  margin: 10px 0;
-}
-
-.ai-test-result p {
-  color: #4CAF50;
-  margin: 5px 0;
-  font-weight: bold;
-}
-
-.ai-test-graph {
-  margin-top: 20px;
-}
-
-.ai-test-graph canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.chart-wrapper {
-  position: relative;
-  width: 100%;
-  height: 300px;
-}
-
-/* AI Strategy Analysis */
-
-.ai-strategy-analysis {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 15px;
-  margin: 20px 0;
-}
-
-.ai-strategy-analysis h4 {
-  color: #d4af37;
-  margin-top: 0;
-}
-
-.strategy-breakdown {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.breakdown-section {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 12px;
-}
-
-.breakdown-section h5 {
-  color: #d4af37;
-  font-size: 0.95em;
-  margin: 0 0 10px 0;
-  border-bottom: 1px solid #444;
-  padding-bottom: 8px;
-}
-
-.bet-frequency-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.bet-freq-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.bet-freq-name {
-  color: #bbb;
-  font-size: 0.9em;
-  font-weight: bold;
-}
-
-.bet-freq-bar {
-  flex: 1;
-  height: 4px;
-  background: #444;
-  margin: 0 8px;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.bet-freq-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4CAF50 0%, #81C784 100%);
-}
-
-.bet-freq-pct {
-  color: #4CAF50;
-  font-size: 0.85em;
-  font-weight: bold;
-  min-width: 40px;
-  text-align: right;
-}
-
-.patterns-display {
-  font-size: 0.9em;
-  line-height: 1.6;
-  color: #ccc;
-}
-
-.pattern-item {
-  padding: 6px 0;
-  border-bottom: 1px solid #333;
-}
-
-.pattern-item:last-child {
-  border-bottom: none;
-}
-
-.pattern-label {
-  color: #d4af37;
-  font-weight: bold;
-}
-
-#btn-analyze-strategy,
-#btn-export-network {
-  padding: 8px 15px;
-  background: #d4af37;
-  color: #000;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: all 0.3s ease;
-  margin-top: 10px;
-  margin-right: 10px;
-}
-
-#btn-analyze-strategy:hover,
-#btn-export-network:hover {
-  background: #e5c158;
-  transform: scale(1.03);
-}

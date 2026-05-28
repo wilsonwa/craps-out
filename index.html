@@ -167,28 +167,29 @@
             <div class="chip-stack" id="chips-come"></div>
           </button>
 
-          <!-- ROW 3: FIELD area -->
-          <button class="bet-area field-area" data-bet="field" aria-label="Field">
-            <div class="field-content">
-              <span class="field-number field-special">2</span>
-              <span class="field-dot"></span>
-              <span class="field-number">3</span>
-              <span class="field-dot"></span>
-              <span class="field-number">4</span>
-              <span class="field-dot"></span>
+          <!-- ROW 3: FIELD area — 3 sections, all place the same field bet -->
+          <div class="field-area field-row">
+            <button class="bet-area field-section field-left" data-bet="field" aria-label="Field 2 3 4">
+              <div class="field-nums">
+                <span class="field-number field-special">2</span>
+                <span class="field-number">3</span>
+                <span class="field-number">4</span>
+              </div>
+            </button>
+            <button class="bet-area field-section field-center" data-bet="field" aria-label="Field">
               <span class="field-title">FIELD</span>
-              <span class="field-dot"></span>
-              <span class="field-number">9</span>
-              <span class="field-dot"></span>
-              <span class="field-number">10</span>
-              <span class="field-dot"></span>
-              <span class="field-number">11</span>
-              <span class="field-dot"></span>
-              <span class="field-number field-special">12</span>
-            </div>
-            <div class="field-payout">2 pays 2:1 &bull; 12 pays 3:1</div>
-            <div class="chip-stack" id="chips-field"></div>
-          </button>
+              <div class="field-payout">2 pays 2:1 &bull; 12 pays 3:1</div>
+              <div class="chip-stack" id="chips-field"></div>
+            </button>
+            <button class="bet-area field-section field-right" data-bet="field" aria-label="Field 9 10 11 12">
+              <div class="field-nums">
+                <span class="field-number">9</span>
+                <span class="field-number">10</span>
+                <span class="field-number">11</span>
+                <span class="field-number field-special">12</span>
+              </div>
+            </button>
+          </div>
 
           <!-- ROW 4: Don't Pass Bar -->
           <button class="bet-area dont-pass-area" data-bet="dont-pass" aria-label="Don't Pass">
