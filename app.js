@@ -28,24 +28,9 @@
     betsList: document.getElementById('bets-list'),
     totalWagered: document.getElementById('total-wagered'),
     historyList: document.getElementById('history-list'),
-    strategyMode: document.getElementById('strategy-mode'),
-    strategyStats: document.getElementById('strategy-stats'),
-    statTotalRolls: document.getElementById('stat-total-rolls'),
-    statWins: document.getElementById('stat-wins'),
-    statLosses: document.getElementById('stat-losses'),
-    statWinRate: document.getElementById('stat-win-rate'),
-    statWagered: document.getElementById('stat-wagered'),
-    statNetProfit: document.getElementById('stat-net-profit'),
     bettingHistoryList: document.getElementById('betting-history-list'),
     chipButtons: document.querySelectorAll('.chip-btn'),
     betAreas: document.querySelectorAll('.bet-area'),
-    // Strategy controls (populated in init)
-    strategySelect: null,
-    rngSeed: null,
-    btnApplySeed: null,
-    btnRunStrategy: null,
-    btnStopStrategy: null,
-    currentRoll: null,
   };
 
   // ---- State ----
@@ -403,20 +388,6 @@
       : 'var(--text-light)';
   }
 
-  function renderStrategyStats() {
-    var stats = game.getStats();
-    dom.statTotalRolls.textContent = stats.totalRolls;
-    dom.statWins.textContent = stats.winsCount;
-    dom.statLosses.textContent = stats.lossesCount;
-    var winRate = stats.totalRolls > 0
-      ? Math.round((stats.winsCount / (stats.winsCount + stats.lossesCount)) * 100)
-      : 0;
-    dom.statWinRate.textContent = winRate + '%';
-    dom.statWagered.textContent = formatCurrency(stats.totalWagered);
-    dom.statNetProfit.textContent = formatCurrency(stats.netProfit);
-    dom.statNetProfit.style.color = stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)';
-  }
-
   function addBettingHistoryEntry(rollNum, dice, resolved) {
     if (resolved.wins.length === 0 && resolved.losses.length === 0 && resolved.pushes.length === 0) {
       return;
@@ -543,24 +514,6 @@
 
   // ---- Dice Roll Animation ----
 
-  function quickFlashDice(callback) {
-    dom.die1.classList.add('rolling');
-    dom.die2.classList.add('rolling');
-    var face1 = dom.die1.querySelector('.die-face');
-    var face2 = dom.die2.querySelector('.die-face');
-    var frames = 0;
-    var interval = setInterval(function() {
-      face1.dataset.value = Math.floor(Math.random() * 6) + 1;
-      face2.dataset.value = Math.floor(Math.random() * 6) + 1;
-      if (++frames >= 3) clearInterval(interval);
-    }, 50);
-    setTimeout(function() {
-      dom.die1.classList.remove('rolling');
-      dom.die2.classList.remove('rolling');
-      callback();
-    }, 200);
-  }
-
   function animateRoll(callback) {
     isRolling = true;
     dom.btnRoll.disabled = true;
@@ -649,14 +602,10 @@
     addBettingHistoryEntry(game.getGameState().totalRolls, result.dice, result.resolved);
     flashBetAreas(result.resolved);
     render();
-
-    if (dom.strategyMode.checked || StrategyRunner.isActive) {
-      renderStrategyStats();
-    }
   }
 
   function onRoll() {
-    if (isRolling && !dom.strategyMode.checked) return;
+    if (isRolling) return;
 
     var bets = game.getBets();
     if (Object.keys(bets).length === 0) {
@@ -664,15 +613,10 @@
       return;
     }
 
-    if (dom.strategyMode.checked) {
+    animateRoll(function () {
       var result = game.roll();
       processRollResult(result);
-    } else {
-      animateRoll(function () {
-        var result = game.roll();
-        processRollResult(result);
-      });
-    }
+    });
   }
 
   function onClearBets() {
@@ -731,318 +675,11 @@
     render();
   }
 
-  function onStrategyModeToggle() {
-    if (dom.strategyMode.checked) {
-      dom.strategyStats.removeAttribute('hidden');
-      renderStrategyStats();
-    } else {
-      dom.strategyStats.setAttribute('hidden', '');
-    }
-  }
-
   function onBetAreaKeydown(e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onBetAreaClick(e);
     }
-  }
-
-  // ---- Strategy Runner ----
-  var StrategyRunner = {
-    strategy: null,
-    isActive: false,
-    rollCount: 0,
-    chartData: {
-      rolls: [],
-      balances: [],
-      activeBets: []
-    },
-
-    start: function(strategy) {
-      this.strategy = strategy;
-      this.isActive = true;
-      this.rollCount = 0;
-      this.chartData = { rolls: [], balances: [], activeBets: [] };
-      if (this.strategy.onSessionStart) {
-        this.strategy.onSessionStart(game.getBalance());
-      }
-    },
-
-    stop: function() {
-      this.isActive = false;
-      this.strategy = null;
-      this.rollCount = 0;
-    },
-
-    placeBets: function() {
-      if (!this.isActive || !this.strategy) return;
-      var gameState = game.getGameState();
-      var bets = game.getBets();
-      var balance = game.getBalance();
-      var toBet = this.strategy.getBets(gameState, bets, balance);
-      toBet.forEach(function(bet) {
-        if (bet.remove) {
-          var removeResult = game.removeBet(bet.betType);
-          if (!removeResult.success) {
-            console.warn('[Strategy] Failed to remove ' + bet.betType + ': ' + removeResult.message);
-          }
-        } else {
-          var options = {};
-          if (bet.point !== undefined) options.point = bet.point;
-          var result = game.placeBet(bet.betType, bet.amount, options);
-          if (!result.success) {
-            console.warn('[Strategy] Failed to place ' + bet.betType + ': ' + result.message);
-          }
-        }
-      });
-    },
-
-    onRollComplete: function(result) {
-      if (!this.isActive || !this.strategy) return;
-      if (this.strategy.onRollComplete) {
-        this.strategy.onRollComplete(result);
-      }
-      this.rollCount++;
-
-      this.chartData.rolls.push(this.rollCount);
-      this.chartData.balances.push(game.getBalance());
-
-      var bets = game.getBets();
-      var totalBets = 0;
-      Object.keys(bets).forEach(function(type) {
-        if (Array.isArray(bets[type])) {
-          bets[type].forEach(function(b) { totalBets += b.amount; });
-        } else {
-          totalBets += bets[type].amount;
-        }
-      });
-      this.chartData.activeBets.push(totalBets);
-    },
-  };
-
-  // ---- Strategy Map ----
-  var STRATEGY_ROLL_LIMIT = 100;
-  var STRATEGIES = {
-    'pass-only': function() { return new PassLineOnlyStrategy(25); },
-    'pass-odds': function() { return new PassWithOddsStrategy(25, 3); },
-    'dont-pass': function() { return new DontPassStrategy(25, 3); },
-    'place-68': function() { return new Place68Strategy(30, 25); },
-    'iron-cross': function() { return new IronCrossStrategy(25, 30, 25); },
-    'martingale': function() { return new MartingalePassStrategy(25, 400); },
-    'molly': function() { return new ThreePointMollyStrategy(25, 2); },
-    'conservative-dont': function() { return new ConservativeDontStrategy(25, 50); },
-    'across-135': function() { return new Across135Strategy({ 'place-5': 25, 'place-6': 30, 'place-8': 30, 'place-9': 25 }, 10, 25); },
-    'heat-seeker': function() { return new HeatSeekerStrategy(25); },
-    'come-continuously': function() { return new ComeContinuouslyStrategy(25, 2); },
-    'press-regress': function() { return new PressRegressStrategy({ 'place-5': 25, 'place-6': 30, 'place-8': 30, 'place-9': 25 }); },
-    'lay-strategy': function() { return new LayStrategy(25, 30); },
-  };
-
-  // ---- Strategy Event Handlers ----
-  function onStrategySelectChange() {
-    var selected = dom.strategySelect.value;
-    dom.btnRunStrategy.disabled = !selected;
-  }
-
-  function onApplySeed() {
-    var seed = parseInt(dom.rngSeed.value, 10);
-    if (!seed || seed < 1) {
-      setMessage('Enter a valid seed (positive integer).', 'error');
-      return;
-    }
-
-    var randomFn = CrapsConstants.createSeededRandom(seed);
-    game = new CrapsGame(1000, { randomFn: randomFn });
-
-    setMessage('Game initialized with seed ' + seed + '. Same seed = same dice sequence.', 'success');
-
-    renderBalance();
-    renderPhase();
-    renderPointMarkers();
-    renderBets();
-    renderChipStacks();
-    dom.btnRoll.disabled = isRolling;
-  }
-
-  function onRandomSeed() {
-    var randomSeed = Math.floor(Math.random() * 999999999) + 1;
-    dom.rngSeed.value = randomSeed;
-    onApplySeed();
-  }
-
-  function onRunStrategy() {
-    var selected = dom.strategySelect.value;
-
-    if (!selected || !STRATEGIES[selected]) {
-      setMessage('Select a strategy first.', 'error');
-      return;
-    }
-
-    if (!dom.rngSeed.value) {
-      setMessage('Enter an RNG seed (or click Random).', 'error');
-      return;
-    }
-
-    onApplySeed();
-
-    var strategy = STRATEGIES[selected]();
-    if (!strategy) {
-      setMessage('Failed to create strategy instance.', 'error');
-      return;
-    }
-
-    StrategyRunner.start(strategy);
-
-    dom.btnRunStrategy.disabled = true;
-    dom.btnStopStrategy.disabled = false;
-    dom.strategySelect.disabled = true;
-    dom.rngSeed.disabled = true;
-    dom.btnApplySeed.disabled = true;
-    dom.btnRandomSeed.disabled = true;
-
-    setMessage('Strategy running: ' + strategy.name, 'info');
-    runStrategySession();
-  }
-
-  function runStrategySession() {
-    function processRoll() {
-      if (!StrategyRunner.isActive) return;
-
-      if (StrategyRunner.rollCount >= STRATEGY_ROLL_LIMIT || game.getBalance() <= 0) {
-        onStrategySessionComplete();
-        return;
-      }
-
-      StrategyRunner.placeBets();
-
-      if (Object.keys(game.getBets()).length === 0) {
-        onStrategySessionComplete();
-        return;
-      }
-
-      var result = game.roll();
-      StrategyRunner.onRollComplete(result);
-      dom.currentRoll.textContent = StrategyRunner.rollCount;
-
-      quickFlashDice(function() {
-        processRollResult(result);
-        setTimeout(processRoll, 50);
-      });
-    }
-
-    processRoll();
-  }
-
-  function renderStrategyGraph() {
-    var chartCanvas = document.getElementById('performanceChart');
-    if (!chartCanvas) return;
-
-    var graphSection = document.getElementById('strategy-graph');
-    if (graphSection) graphSection.removeAttribute('hidden');
-
-    var chartData = StrategyRunner.chartData;
-
-    try {
-      if (window.performanceChartInstance && typeof window.performanceChartInstance.destroy === 'function') {
-        window.performanceChartInstance.destroy();
-      }
-    } catch (e) {
-      console.warn('Error destroying performance chart:', e);
-    }
-
-    var ctx = chartCanvas.getContext('2d');
-    window.performanceChartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: chartData.rolls,
-        datasets: [
-          {
-            label: 'Balance ($)',
-            data: chartData.balances,
-            borderColor: '#3fb950',
-            backgroundColor: 'rgba(63, 185, 80, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            yAxisID: 'y'
-          },
-          {
-            label: 'Active Bets ($)',
-            data: chartData.activeBets,
-            borderColor: '#d94040',
-            backgroundColor: 'rgba(217, 64, 64, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            yAxisID: 'y1'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: {
-            labels: { color: '#f5f0e0', font: { size: 12 } }
-          }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Roll Number', color: '#f5f0e0' },
-            ticks: { color: '#f5f0e0', maxTicksLimit: 20 },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-          },
-          y: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-            title: { display: true, text: 'Balance ($)', color: '#3fb950' },
-            ticks: { color: '#3fb950', callback: function(value) { return '$' + value; } },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-          },
-          y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            title: { display: true, text: 'Active Bets ($)', color: '#d94040' },
-            ticks: { color: '#d94040', callback: function(value) { return '$' + value; } },
-            grid: { drawOnChartArea: false }
-          }
-        }
-      }
-    });
-  }
-
-  function onStrategySessionComplete() {
-    StrategyRunner.stop();
-
-    dom.btnRunStrategy.disabled = false;
-    dom.btnStopStrategy.disabled = true;
-    dom.strategySelect.disabled = false;
-    dom.rngSeed.disabled = false;
-    dom.btnApplySeed.disabled = false;
-    dom.btnRandomSeed.disabled = false;
-
-    var stats = game.getStats();
-    setMessage('Session complete! Rolls: ' + stats.totalRolls +
-      ', Net Profit: ' + formatCurrency(stats.netProfit),
-      stats.netProfit >= 0 ? 'success' : 'error');
-
-    render();
-    renderStrategyStats();
-    renderStrategyGraph();
-  }
-
-  function onStopStrategy() {
-    StrategyRunner.stop();
-    dom.btnRunStrategy.disabled = false;
-    dom.btnStopStrategy.disabled = true;
-    dom.strategySelect.disabled = false;
-    dom.rngSeed.disabled = false;
-    dom.btnApplySeed.disabled = false;
-    dom.btnRandomSeed.disabled = false;
-    setMessage('Strategy stopped.', 'info');
   }
 
   // ---- Init ----
@@ -1061,24 +698,6 @@
     });
 
     dom.betAmount.addEventListener('input', onBetAmountChange);
-    dom.strategyMode.addEventListener('change', onStrategyModeToggle);
-
-    // Strategy controls
-    dom.strategySelect = document.getElementById('strategy-select');
-    dom.rngSeed = document.getElementById('rng-seed');
-    dom.btnApplySeed = document.getElementById('btn-apply-seed');
-    dom.btnRandomSeed = document.getElementById('btn-random-seed');
-    dom.btnRunStrategy = document.getElementById('btn-run-strategy');
-    dom.btnStopStrategy = document.getElementById('btn-stop-strategy');
-    dom.currentRoll = document.getElementById('current-roll');
-
-    if (dom.strategySelect) {
-      dom.strategySelect.addEventListener('change', onStrategySelectChange);
-      dom.btnApplySeed.addEventListener('click', onApplySeed);
-      dom.btnRandomSeed.addEventListener('click', onRandomSeed);
-      dom.btnRunStrategy.addEventListener('click', onRunStrategy);
-      dom.btnStopStrategy.addEventListener('click', onStopStrategy);
-    }
 
     updateChipCursor(selectedChipValue);
     render();

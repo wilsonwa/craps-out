@@ -445,102 +445,6 @@
         <button id="btn-clear-bets" class="btn btn-clear" aria-label="Clear all bets">Clear Bets</button>
         <button id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New Game</button>
       </div>
-      <div class="mode-toggle">
-        <label class="toggle-label">
-          <input type="checkbox" id="strategy-mode" aria-label="Toggle strategy testing mode">
-          <span class="toggle-switch"></span>
-          <span>Strategy Testing Mode</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- Strategy Controls -->
-    <section class="strategy-controls" aria-label="Betting strategy controls">
-      <h3>Betting Strategy Testing</h3>
-
-      <div class="strategy-selector">
-        <label for="strategy-select">Strategy:</label>
-        <select id="strategy-select">
-          <option value="">Select a Strategy</option>
-          <optgroup label="Basic Strategies">
-            <option value="pass-only">Pass Line Only ($25)</option>
-            <option value="pass-odds">Pass + 3x Odds ($25 base)</option>
-            <option value="dont-pass">Don't Pass + 3x Odds ($25 base)</option>
-          </optgroup>
-          <optgroup label="Place Betting">
-            <option value="place-68">Place 6 &amp; 8 Only ($30 each)</option>
-            <option value="iron-cross">Iron Cross ($25 field, $30 place)</option>
-            <option value="across-135">$135 Across (Two-Hit Regression)</option>
-          </optgroup>
-          <optgroup label="Multiple Points">
-            <option value="molly">3-Point Molly ($25 + 2x odds)</option>
-            <option value="heat-seeker">Heat Seeker ($25 + 4+ come points)</option>
-            <option value="come-continuously">Come Continuously ($25 + continuous comes)</option>
-          </optgroup>
-          <optgroup label="Advanced">
-            <option value="press-regress">Press &amp; Regress (Double then reduce)</option>
-            <option value="lay-strategy">Lay Strategy (Dark side, lay 6&amp;8)</option>
-            <option value="conservative-dont">Conservative Don't ($25 + Lay 4/10)</option>
-            <option value="martingale">Martingale Pass ($25-$400, risky)</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <div class="seed-input">
-        <label for="rng-seed">RNG Seed:</label>
-        <input type="number" id="rng-seed" placeholder="e.g., 12345" min="1" max="999999999">
-        <button id="btn-apply-seed">Apply Seed</button>
-        <button id="btn-random-seed">Random</button>
-      </div>
-
-      <div class="session-info">
-        <p>Strategy will run for: <span id="strategy-roll-count">500</span> rolls</p>
-        <p>Current Roll: <span id="current-roll">0</span></p>
-      </div>
-
-      <div class="strategy-actions">
-        <button id="btn-run-strategy" class="btn btn-run-strategy" disabled>Run Strategy (100 rolls)</button>
-        <button id="btn-stop-strategy" class="btn btn-stop-strategy" disabled>Stop Strategy</button>
-      </div>
-    </section>
-
-    <!-- Strategy Stats Panel (hidden by default) -->
-    <section id="strategy-stats" class="strategy-stats" hidden aria-label="Strategy testing statistics">
-      <h3>Session Statistics</h3>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-label">Total Rolls:</span>
-          <span id="stat-total-rolls" class="stat-value">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Wins:</span>
-          <span id="stat-wins" class="stat-value">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Losses:</span>
-          <span id="stat-losses" class="stat-value">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Win Rate:</span>
-          <span id="stat-win-rate" class="stat-value">0%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Total Wagered:</span>
-          <span id="stat-wagered" class="stat-value">$0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Net Profit:</span>
-          <span id="stat-net-profit" class="stat-value">$0</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Strategy Performance Graph -->
-    <section id="strategy-graph" class="strategy-graph" hidden aria-label="Strategy performance graph">
-      <h3>Strategy Performance (100 Rolls)</h3>
-      <div class="graph-container">
-        <canvas id="performanceChart"></canvas>
-      </div>
     </section>
 
     <!-- Betting History -->
@@ -576,7 +480,6 @@
     <p>Craps &mdash; For entertainment and educational purposes only</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="craps-engine.js"></script>
   <script src="app.js"></script>
   <script>
