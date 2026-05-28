@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Icon Generator</title>
+  <style>
+    body { font-family: sans-serif; background: #1a1a2e; color: #f5f0e0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 20px; }
+    canvas { border: 1px solid #444; border-radius: 8px; }
+    button { padding: 12px 24px; background: #d4a843; color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    button:hover { background: #f0c860; }
+    .row { display: flex; gap: 40px; align-items: flex-start; }
+    .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    p { color: #aaa; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h2>Craps Icon Generator</h2>
+  <p>Click each button to download the PNG. Then put both files in the <code>icons/</code> folder.</p>
+  <div class="row">
+    <div class="col">
+      <canvas id="c192" width="192" height="192"></canvas>
+      <button onclick="download(192)">Download icon-192.png</button>
+    </div>
+    <div class="col">
+      <canvas id="c512" width="512" height="512"></canvas>
+      <button onclick="download(512)">Download icon-512.png</button>
+    </div>
+  </div>
+
+  <script>
+    var svgSource = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.55)"/>
+    </filter>
+  </defs>
+  <rect width="192" height="192" rx="32" fill="#1a1a2e"/>
+  <g transform="translate(62,100) rotate(-14)" filter="url(#shadow)">
+    <rect x="-37" y="-37" width="74" height="74" rx="11" fill="#f5f0e0" stroke="#d4a843" stroke-width="3.5"/>
+    <circle cx="17" cy="-17" r="7" fill="#1a1a2e"/>
+    <circle cx="-17" cy="17" r="7" fill="#1a1a2e"/>
+  </g>
+  <g transform="translate(126,92) rotate(11)" filter="url(#shadow)">
+    <rect x="-37" y="-37" width="74" height="74" rx="11" fill="#f5f0e0" stroke="#d4a843" stroke-width="3.5"/>
+    <circle cx="-17" cy="-17" r="7" fill="#1a1a2e"/>
+    <circle cx="17" cy="-17" r="7" fill="#1a1a2e"/>
+    <circle cx="0"   cy="0"   r="7" fill="#1a1a2e"/>
+    <circle cx="-17" cy="17"  r="7" fill="#1a1a2e"/>
+    <circle cx="17"  cy="17"  r="7" fill="#1a1a2e"/>
+  </g>
+</svg>`;
+
+    function renderToCanvas(size, canvasId, callback) {
+      var canvas = document.getElementById(canvasId);
+      var ctx = canvas.getContext('2d');
+      var blob = new Blob([svgSource], { type: 'image/svg+xml' });
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        if (callback) callback();
+      };
+      img.src = url;
+    }
+
+    function download(size) {
+      var canvasId = 'c' + size;
+      renderToCanvas(size, canvasId, function () {
+        var canvas = document.getElementById(canvasId);
+        var link = document.createElement('a');
+        link.download = 'icon-' + size + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+
+    // Render previews on load
+    renderToCanvas(192, 'c192');
+    renderToCanvas(512, 'c512');
+  </script>
+</body>
+</html>
