@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.55)"/>
+    </filter>
+  </defs>
+
+  <!-- App background -->
+  <rect width="192" height="192" rx="32" fill="#1a1a2e"/>
+
+  <!-- Die 1: shows 2 — back/left, rotated counter-clockwise -->
+  <g transform="translate(62,100) rotate(-14)" filter="url(#shadow)">
+    <rect x="-37" y="-37" width="74" height="74" rx="11" fill="#f5f0e0" stroke="#d4a843" stroke-width="3.5"/>
+    <!-- dot: top-right -->
+    <circle cx="17" cy="-17" r="7" fill="#1a1a2e"/>
+    <!-- dot: bottom-left -->
+    <circle cx="-17" cy="17" r="7" fill="#1a1a2e"/>
+  </g>
+
+  <!-- Die 2: shows 5 — front/right, rotated clockwise -->
+  <g transform="translate(126,92) rotate(11)" filter="url(#shadow)">
+    <rect x="-37" y="-37" width="74" height="74" rx="11" fill="#f5f0e0" stroke="#d4a843" stroke-width="3.5"/>
+    <!-- dots: top-left, top-right, center, bottom-left, bottom-right -->
+    <circle cx="-17" cy="-17" r="7" fill="#1a1a2e"/>
+    <circle cx="17" cy="-17" r="7" fill="#1a1a2e"/>
+    <circle cx="0"   cy="0"   r="7" fill="#1a1a2e"/>
+    <circle cx="-17" cy="17"  r="7" fill="#1a1a2e"/>
+    <circle cx="17"  cy="17"  r="7" fill="#1a1a2e"/>
+  </g>
+</svg>

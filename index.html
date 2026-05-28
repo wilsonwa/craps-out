@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Craps</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Craps">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <header class="game-header">
+    <h1>Craps</h1>
+    <div class="player-info">
+      <span class="balance-label">Balance:</span>
+      <span id="player-balance" class="balance-amount">$1000</span>
+    </div>
+  </header>
+
+  <main class="game-container">
+    <!-- Game Status Bar -->
+    <section class="game-status" aria-live="polite">
+      <div class="phase-indicator">
+        <span class="phase-label">Phase:</span>
+        <span id="game-phase" class="phase-value">Come-Out Roll</span>
+      </div>
+      <div class="point-indicator">
+        <span class="point-label">Point:</span>
+        <span id="point-value" class="point-value">OFF</span>
+      </div>
+      <div id="game-message" class="game-message">Place your bets and roll the dice!</div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- TABLE LAYOUT: Craps Table + Prop Sidebar     -->
+    <!-- ============================================ -->
+    <div class="table-layout">
+
+      <!-- CRAPS TABLE - Main Game Field -->
+      <div class="craps-table">
+        <div class="table-felt">
+
+          <!-- ROW 1: Don't Come Bar + Number Boxes (4,5,SIX,8,NINE,10) + Big 6/8 -->
+          <div class="table-top-row">
+            <button class="bet-area dont-come-bar" data-bet="dont-come" aria-label="Don't Come">
+              <span class="bet-label">Don't<br>Come<br>Bar</span>
+              <div class="chip-stack" id="chips-dont-come"></div>
+            </button>
+
+            <div class="number-boxes">
+              <div class="number-box" data-number="4">
+                <div class="point-marker" id="point-marker-4"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-4" aria-label="Lay 4">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-4"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-4" aria-label="Place 4">
+                  <span class="number-label">4</span>
+                  <div class="chip-stack" id="chips-place-4"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-4" aria-label="Buy 4">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-4"></div>
+                </button>
+              </div>
+
+              <div class="number-box" data-number="5">
+                <div class="point-marker" id="point-marker-5"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-5" aria-label="Lay 5">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-5"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-5" aria-label="Place 5">
+                  <span class="number-label">5</span>
+                  <div class="chip-stack" id="chips-place-5"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-5" aria-label="Buy 5">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-5"></div>
+                </button>
+              </div>
+
+              <div class="number-box" data-number="6">
+                <div class="point-marker" id="point-marker-6"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-6" aria-label="Lay 6">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-6"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-6" aria-label="Place 6">
+                  <span class="number-label">SIX</span>
+                  <div class="chip-stack" id="chips-place-6"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-6" aria-label="Buy 6">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-6"></div>
+                </button>
+              </div>
+
+              <div class="number-box" data-number="8">
+                <div class="point-marker" id="point-marker-8"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-8" aria-label="Lay 8">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-8"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-8" aria-label="Place 8">
+                  <span class="number-label">EIGHT</span>
+                  <div class="chip-stack" id="chips-place-8"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-8" aria-label="Buy 8">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-8"></div>
+                </button>
+              </div>
+
+              <div class="number-box" data-number="9">
+                <div class="point-marker" id="point-marker-9"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-9" aria-label="Lay 9">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-9"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-9" aria-label="Place 9">
+                  <span class="number-label">NINE</span>
+                  <div class="chip-stack" id="chips-place-9"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-9" aria-label="Buy 9">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-9"></div>
+                </button>
+              </div>
+
+              <div class="number-box" data-number="10">
+                <div class="point-marker" id="point-marker-10"></div>
+                <button class="bet-area number-bet-lay" data-bet="lay-10" aria-label="Lay 10">
+                  <span class="lay-label">Lay</span>
+                  <div class="chip-stack" id="chips-lay-10"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-10" aria-label="Place 10">
+                  <span class="number-label">10</span>
+                  <div class="chip-stack" id="chips-place-10"></div>
+                </button>
+                <button class="bet-area number-bet-buy" data-bet="buy-10" aria-label="Buy 10">
+                  <span class="buy-label">Buy</span>
+                  <div class="chip-stack" id="chips-buy-10"></div>
+                </button>
+              </div>
+            </div>
+
+            <div class="big-bets">
+              <button class="bet-area big-bet" data-bet="big-6" aria-label="Big 6">
+                <span class="bet-label">BIG 6</span>
+                <div class="chip-stack" id="chips-big-6"></div>
+              </button>
+              <button class="bet-area big-bet" data-bet="big-8" aria-label="Big 8">
+                <span class="bet-label">BIG 8</span>
+                <div class="chip-stack" id="chips-big-8"></div>
+              </button>
+            </div>
+          </div>
+
+          <!-- ROW 2: COME area -->
+          <button class="bet-area come-area" data-bet="come" aria-label="Come">
+            <span class="come-label">COME</span>
+            <div class="chip-stack" id="chips-come"></div>
+          </button>
+
+          <!-- ROW 3: FIELD area -->
+          <button class="bet-area field-area" data-bet="field" aria-label="Field">
+            <div class="field-content">
+              <span class="field-number field-special">2</span>
+              <span class="field-dot"></span>
+              <span class="field-number">3</span>
+              <span class="field-dot"></span>
+              <span class="field-number">4</span>
+              <span class="field-dot"></span>
+              <span class="field-title">FIELD</span>
+              <span class="field-dot"></span>
+              <span class="field-number">9</span>
+              <span class="field-dot"></span>
+              <span class="field-number">10</span>
+              <span class="field-dot"></span>
+              <span class="field-number">11</span>
+              <span class="field-dot"></span>
+              <span class="field-number field-special">12</span>
+            </div>
+            <div class="field-payout">2 pays 2:1 &bull; 12 pays 3:1</div>
+            <div class="chip-stack" id="chips-field"></div>
+          </button>
+
+          <!-- ROW 4: Don't Pass Bar -->
+          <button class="bet-area dont-pass-area" data-bet="dont-pass" aria-label="Don't Pass">
+            <span class="bet-label">Don't Pass Bar</span>
+            <div class="chip-stack" id="chips-dont-pass"></div>
+          </button>
+
+          <!-- ROW 5: PASS LINE + PUT -->
+          <div class="pass-line-row">
+            <button class="bet-area pass-area" data-bet="pass" aria-label="Pass Line">
+              <span class="pass-label">PASS LINE</span>
+              <div class="chip-stack" id="chips-pass"></div>
+            </button>
+            <button class="bet-area put-bet" data-bet="put" aria-label="Put Bet">
+              <span class="put-label">PUT</span>
+              <div class="chip-stack" id="chips-put"></div>
+            </button>
+          </div>
+
+          <!-- ROW 6: Odds zone -->
+          <div class="odds-zone">
+            <button class="bet-area odds-bet pass-odds" data-bet="pass-odds" aria-label="Pass Odds">
+              <span class="bet-label">Pass Odds</span>
+              <div class="chip-stack" id="chips-pass-odds"></div>
+            </button>
+            <button class="bet-area odds-bet dont-pass-odds" data-bet="dont-pass-odds" aria-label="Don't Pass Odds">
+              <span class="bet-label">Don't Pass Odds</span>
+              <div class="chip-stack" id="chips-dont-pass-odds"></div>
+            </button>
+          </div>
+
+          <!-- Come Odds / Don't Come Odds -->
+          <div class="come-odds-zone">
+            <button class="bet-area odds-bet come-odds-btn" data-bet="come-odds" aria-label="Come Odds">
+              <span class="bet-label">Come Odds</span>
+              <div class="chip-stack" id="chips-come-odds"></div>
+            </button>
+            <button class="bet-area odds-bet dont-come-odds-btn" data-bet="dont-come-odds" aria-label="Don't Come Odds">
+              <span class="bet-label">Don't Come Odds</span>
+              <div class="chip-stack" id="chips-dont-come-odds"></div>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Proposition Bets Sidebar -->
+      <aside class="prop-sidebar" aria-label="Proposition bets">
+        <div class="prop-sidebar-title">PROPS</div>
+        <div class="prop-grid">
+
+          <!-- Row 1: Any Seven (SEVEN) - full width -->
+          <button class="bet-area prop-bet any-seven" data-bet="any-seven" aria-label="Any 7" style="grid-column: span 6;">
+            <span class="bet-label">SEVEN</span>
+            <span class="payout-label">5 FOR 1</span>
+            <div class="chip-stack" id="chips-any-seven"></div>
+          </button>
+
+          <!-- Split: Any Seven / Hard ways -->
+          <button class="bet-area split-zone" data-bet="split-seven-craps" aria-label="Split Any 7 / Any Craps" style="grid-column: span 6;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-seven-craps"></div>
+          </button>
+
+          <!-- Row 2: Hard 6 (10 FOR 1) & Hard 10 (8 FOR 1) -->
+          <button class="bet-area prop-bet hard-way" data-bet="hard-6" aria-label="Hard 6" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-3"><span class="dot top-left"></span><span class="dot center"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-3"><span class="dot top-left"></span><span class="dot center"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">10 FOR 1</span>
+            <div class="chip-stack" id="chips-hard-6"></div>
+          </button>
+
+          <button class="bet-area prop-bet hard-way" data-bet="hard-10" aria-label="Hard 10" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-5"><span class="dot center"></span><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-5"><span class="dot center"></span><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">8 FOR 1</span>
+            <div class="chip-stack" id="chips-hard-10"></div>
+          </button>
+
+          <!-- Split: Hard 6 / Hard 8 and Hard 10 / Horn 2 -->
+          <button class="bet-area split-zone" data-bet="split-hard6-hard8" aria-label="Split Hard 6 / Hard 8" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-hard6-hard8"></div>
+          </button>
+          <button class="bet-area split-zone" data-bet="split-hard10-horn2" aria-label="Split Hard 10 / Horn 2" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-hard10-horn2"></div>
+          </button>
+
+          <!-- Row 3: Hard 8 (10 FOR 1) & Hard 4 (8 FOR 1) -->
+          <button class="bet-area prop-bet hard-way" data-bet="hard-8" aria-label="Hard 8" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-4"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-4"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">10 FOR 1</span>
+            <div class="chip-stack" id="chips-hard-8"></div>
+          </button>
+
+          <button class="bet-area prop-bet hard-way" data-bet="hard-4" aria-label="Hard 4" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-2"><span class="dot top-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-2"><span class="dot top-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">8 FOR 1</span>
+            <div class="chip-stack" id="chips-hard-4"></div>
+          </button>
+
+          <!-- Split: Hard 8 / Hard 10 and Hard 4 / Hard 6 -->
+          <button class="bet-area split-zone" data-bet="split-hard8-hard10" aria-label="Split Hard 8 / Hard 10" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-hard8-hard10"></div>
+          </button>
+          <button class="bet-area split-zone" data-bet="split-hard4-hard6" aria-label="Split Hard 4 / Hard 6" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-hard4-hard6"></div>
+          </button>
+
+          <!-- Split: Any Craps / Hard 4 -->
+          <button class="bet-area split-zone" data-bet="split-craps-hard4" aria-label="Split Any Craps / Hard 4" style="grid-column: span 6;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-craps-hard4"></div>
+          </button>
+
+          <!-- Row 4: Horn bets - 3, 2 (Snake Eyes), 12 (each spans 2) -->
+          <button class="bet-area prop-bet horn" data-bet="horn-3" aria-label="Horn 3" style="grid-column: span 2;">
+            <div class="dice-display">
+              <div class="mini-die die-1"><span class="dot center"></span></div>
+              <div class="mini-die die-2"><span class="dot top-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">15 FOR 1</span>
+            <div class="chip-stack" id="chips-horn-3"></div>
+          </button>
+
+          <button class="bet-area prop-bet horn" data-bet="horn-2" aria-label="Horn 2" style="grid-column: span 2;">
+            <div class="dice-display">
+              <div class="mini-die die-1"><span class="dot center"></span></div>
+              <div class="mini-die die-1"><span class="dot center"></span></div>
+            </div>
+            <span class="payout-label">30 FOR 1</span>
+            <div class="chip-stack" id="chips-horn-2"></div>
+          </button>
+
+          <button class="bet-area prop-bet horn" data-bet="horn-12" aria-label="Horn 12" style="grid-column: span 2;">
+            <div class="dice-display">
+              <div class="mini-die die-6"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot mid-left"></span><span class="dot mid-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-6"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot mid-left"></span><span class="dot mid-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">30 FOR 1</span>
+            <div class="chip-stack" id="chips-horn-12"></div>
+          </button>
+
+          <!-- Split: Horn 2 / Horn 3 and Horn 3 / Horn 11 -->
+          <button class="bet-area split-zone" data-bet="split-horn2-horn3" aria-label="Split Horn 2 / Horn 3" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-horn2-horn3"></div>
+          </button>
+          <button class="bet-area split-zone" data-bet="split-horn3-horn11" aria-label="Split Horn 3 / Horn 11" style="grid-column: span 3;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-horn3-horn11"></div>
+          </button>
+
+          <!-- Row 5: Horn 11 (YO) -->
+          <button class="bet-area prop-bet horn" data-bet="horn-11" aria-label="Horn 11" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-5"><span class="dot center"></span><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-6"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot mid-left"></span><span class="dot mid-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">15 FOR 1</span>
+            <div class="chip-stack" id="chips-horn-11"></div>
+          </button>
+
+          <button class="bet-area prop-bet horn" data-bet="horn-11" aria-label="Horn 11" style="grid-column: span 3;">
+            <div class="dice-display">
+              <div class="mini-die die-6"><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot mid-left"></span><span class="dot mid-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+              <div class="mini-die die-5"><span class="dot center"></span><span class="dot top-left"></span><span class="dot top-right"></span><span class="dot bottom-left"></span><span class="dot bottom-right"></span></div>
+            </div>
+            <span class="payout-label">15 FOR 1</span>
+            <div class="chip-stack" id="chips-horn-11-alt"></div>
+          </button>
+
+          <!-- Split: Horn 11 / Horn 12 -->
+          <button class="bet-area split-zone" data-bet="split-horn11-horn12" aria-label="Split Horn 11 / Horn 12" style="grid-column: span 6;">
+            <span class="split-label">SPLIT</span>
+            <div class="chip-stack" id="chips-split-horn11-horn12"></div>
+          </button>
+
+          <!-- Row 6: Any Craps - full width -->
+          <button class="bet-area prop-bet any-craps" data-bet="any-craps" aria-label="Any Craps" style="grid-column: span 6;">
+            <span class="bet-label">ANY CRAPS</span>
+            <span class="payout-label">8 FOR 1</span>
+            <div class="chip-stack" id="chips-any-craps"></div>
+          </button>
+
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- Dice Area -->
+    <section class="dice-area" aria-label="Dice display">
+      <div class="dice-container">
+        <div class="die" id="die-1" aria-label="Die 1">
+          <div class="die-face" data-value="1">
+            <span class="dot top-left"></span>
+            <span class="dot top-right"></span>
+            <span class="dot mid-left"></span>
+            <span class="dot center"></span>
+            <span class="dot mid-right"></span>
+            <span class="dot bottom-left"></span>
+            <span class="dot bottom-right"></span>
+          </div>
+        </div>
+        <div class="die" id="die-2" aria-label="Die 2">
+          <div class="die-face" data-value="1">
+            <span class="dot top-left"></span>
+            <span class="dot top-right"></span>
+            <span class="dot mid-left"></span>
+            <span class="dot center"></span>
+            <span class="dot mid-right"></span>
+            <span class="dot bottom-left"></span>
+            <span class="dot bottom-right"></span>
+          </div>
+        </div>
+      </div>
+      <div class="dice-total">
+        <span>Total: </span>
+        <span id="dice-total-value">-</span>
+      </div>
+      <div id="dice-roll-history" class="dice-roll-history" aria-label="Recent roll history" style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow:hidden;gap:3px;width:100%;min-height:34px;align-items:center;"></div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls" aria-label="Game controls">
+      <div class="bet-controls">
+        <label for="bet-amount" class="bet-amount-label">Bet Amount:</label>
+        <div class="chip-selector">
+          <button class="chip-btn" data-value="1" aria-label="Select $1 chip">$1</button>
+          <button class="chip-btn" data-value="5" aria-label="Select $5 chip">$5</button>
+          <button class="chip-btn selected" data-value="25" aria-label="Select $25 chip">$25</button>
+          <button class="chip-btn" data-value="100" aria-label="Select $100 chip">$100</button>
+          <button class="chip-btn" data-value="500" aria-label="Select $500 chip">$500</button>
+        </div>
+        <div class="custom-bet">
+          <input type="number" id="bet-amount" min="1" value="25" aria-label="Custom bet amount">
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button id="btn-roll" class="btn btn-roll" aria-label="Roll the dice">Roll Dice</button>
+        <button id="btn-clear-bets" class="btn btn-clear" aria-label="Clear all bets">Clear Bets</button>
+        <button id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New Game</button>
+      </div>
+      <div class="mode-toggle">
+        <label class="toggle-label">
+          <input type="checkbox" id="strategy-mode" aria-label="Toggle strategy testing mode">
+          <span class="toggle-switch"></span>
+          <span>Strategy Testing Mode</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Strategy Controls -->
+    <section class="strategy-controls" aria-label="Betting strategy controls">
+      <h3>Betting Strategy Testing</h3>
+
+      <div class="strategy-selector">
+        <label for="strategy-select">Strategy:</label>
+        <select id="strategy-select">
+          <option value="">Select a Strategy</option>
+          <optgroup label="Basic Strategies">
+            <option value="pass-only">Pass Line Only ($25)</option>
+            <option value="pass-odds">Pass + 3x Odds ($25 base)</option>
+            <option value="dont-pass">Don't Pass + 3x Odds ($25 base)</option>
+          </optgroup>
+          <optgroup label="Place Betting">
+            <option value="place-68">Place 6 &amp; 8 Only ($30 each)</option>
+            <option value="iron-cross">Iron Cross ($25 field, $30 place)</option>
+            <option value="across-135">$135 Across (Two-Hit Regression)</option>
+          </optgroup>
+          <optgroup label="Multiple Points">
+            <option value="molly">3-Point Molly ($25 + 2x odds)</option>
+            <option value="heat-seeker">Heat Seeker ($25 + 4+ come points)</option>
+            <option value="come-continuously">Come Continuously ($25 + continuous comes)</option>
+          </optgroup>
+          <optgroup label="Advanced">
+            <option value="press-regress">Press &amp; Regress (Double then reduce)</option>
+            <option value="lay-strategy">Lay Strategy (Dark side, lay 6&amp;8)</option>
+            <option value="conservative-dont">Conservative Don't ($25 + Lay 4/10)</option>
+            <option value="martingale">Martingale Pass ($25-$400, risky)</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="seed-input">
+        <label for="rng-seed">RNG Seed:</label>
+        <input type="number" id="rng-seed" placeholder="e.g., 12345" min="1" max="999999999">
+        <button id="btn-apply-seed">Apply Seed</button>
+        <button id="btn-random-seed">Random</button>
+      </div>
+
+      <div class="session-info">
+        <p>Strategy will run for: <span id="strategy-roll-count">500</span> rolls</p>
+        <p>Current Roll: <span id="current-roll">0</span></p>
+      </div>
+
+      <div class="strategy-actions">
+        <button id="btn-run-strategy" class="btn btn-run-strategy" disabled>Run Strategy (100 rolls)</button>
+        <button id="btn-stop-strategy" class="btn btn-stop-strategy" disabled>Stop Strategy</button>
+      </div>
+    </section>
+
+    <!-- Strategy Stats Panel (hidden by default) -->
+    <section id="strategy-stats" class="strategy-stats" hidden aria-label="Strategy testing statistics">
+      <h3>Session Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Total Rolls:</span>
+          <span id="stat-total-rolls" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Wins:</span>
+          <span id="stat-wins" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Losses:</span>
+          <span id="stat-losses" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Win Rate:</span>
+          <span id="stat-win-rate" class="stat-value">0%</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Wagered:</span>
+          <span id="stat-wagered" class="stat-value">$0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Net Profit:</span>
+          <span id="stat-net-profit" class="stat-value">$0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Strategy Performance Graph -->
+    <section id="strategy-graph" class="strategy-graph" hidden aria-label="Strategy performance graph">
+      <h3>Strategy Performance (100 Rolls)</h3>
+      <div class="graph-container">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Betting History -->
+    <section class="betting-history" aria-label="Betting outcome history">
+      <h2>Bet Results</h2>
+      <div id="betting-history-list" class="betting-history-list">
+        <p class="no-history">No results yet</p>
+      </div>
+    </section>
+
+    <!-- Active Bets Display -->
+    <section class="active-bets" aria-label="Current active bets">
+      <h2>Active Bets</h2>
+      <div id="bets-list" class="bets-list">
+        <p class="no-bets">No active bets</p>
+      </div>
+      <div class="bets-total">
+        <span>Total Wagered:</span>
+        <span id="total-wagered">$0</span>
+      </div>
+    </section>
+
+    <!-- Roll History -->
+    <section class="roll-history" aria-label="Roll history">
+      <h2>Roll History</h2>
+      <div id="history-list" class="history-list">
+        <p class="no-history">No rolls yet</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="game-footer">
+    <p>Craps &mdash; For entertainment and educational purposes only</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="craps-engine.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+  </script>
+</body>
+</html>
