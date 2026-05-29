@@ -1,4 +1,4 @@
-const CACHE = 'craps-v1';
+const CACHE = 'craps-v2';
 const ASSETS = [
   '.',
   'index.html',
@@ -22,8 +22,17 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Network-first: always try the network so updates show immediately,
+// fall back to the cache when offline. Refresh the cache on every hit.
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request)
+      .then(resp => {
+        const copy = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return resp;
+      })
+      .catch(() => caches.match(e.request).then(r => r || caches.match('index.html')))
   );
 });

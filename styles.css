@@ -293,8 +293,10 @@ body {
 .number-bet-place {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   min-height: 55px;
   background: white;
 }
@@ -347,6 +349,45 @@ body {
   color: #666;
   font-weight: 600;
   text-transform: uppercase;
+}
+
+/* Place-bet payout ratio printed in the box (casino style) */
+.place-odds {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #b00020;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Come / Don't Come chips that have traveled to this number's box */
+.come-chip-spot,
+.dc-chip-spot {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.come-chip-spot {
+  top: 26px;
+  left: 3px;
+}
+
+.dc-chip-spot {
+  bottom: 26px;
+  left: 3px;
+}
+
+.chip.come-chip {
+  box-shadow: 0 0 0 2px #ffd700, 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.chip.dc-chip {
+  box-shadow: 0 0 0 2px #ff5555, 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* Point markers inside number boxes */
@@ -462,19 +503,155 @@ body {
   font-weight: 700;
 }
 
+/* ===== BONUS ROW: All Small / All / All Tall (ATS) ===== */
+.ats-row {
+  display: flex;
+  border-bottom: 2px solid var(--felt-border);
+  background: var(--felt-dark);
+}
+
+.ats-bet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0.3rem 0.2rem;
+  min-height: 52px;
+  border-right: 1px solid var(--felt-border);
+  position: relative;
+}
+
+.ats-bet:last-child {
+  border-right: none;
+}
+
+.ats-all {
+  background: rgba(212, 168, 67, 0.12);
+}
+
+.ats-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--gold-light);
+}
+
+.ats-nums {
+  font-size: 0.55rem;
+  color: #cfe8d6;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ats-bet .payout-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--felt-border);
+}
+
+.ats-progress {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  min-height: 0.7rem;
+}
+
+.ats-progress:not(:empty) {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+
 /* ===== ROW 2: COME area ===== */
 .come-area {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 110px;
+  gap: 0.15rem;
+  min-height: 72px;
   border-bottom: 2px solid var(--felt-border);
   background: var(--felt-light);
 }
 
+/* Casino-style small payout notes printed on the felt bands */
+.band-payout {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.come-area .band-payout {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.odds-payout {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+/* ===== DICE ON THE BOARD ===== */
+.table-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 0.6rem;
+  min-height: 86px;
+  background:
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0.28), transparent 70%),
+    var(--felt-green);
+  border-bottom: 2px solid var(--felt-border);
+}
+
+.table-center .dice-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.table-center .dice-total span:first-child {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+}
+
+.table-center #dice-total-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--gold-light);
+}
+
+/* ===== DICE ROLL HISTORY (bottom of board) ===== */
+.dice-history-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--felt-dark);
+}
+
+.dice-history-label {
+  flex-shrink: 0;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+}
+
 .come-label {
   color: #cc0000;
-  font-size: 3.5rem;
+  font-size: 2.4rem;
   font-weight: 700;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
   letter-spacing: 0.15em;
@@ -564,9 +741,11 @@ body {
 /* ===== ROW 4: Don't Pass Bar ===== */
 .dont-pass-area {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 35px;
+  gap: 0.05rem;
+  min-height: 40px;
   border-bottom: 2px solid var(--felt-border);
   background: var(--felt-dark);
 }
@@ -590,15 +769,17 @@ body {
 
 .pass-area {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80px;
+  gap: 0.1rem;
+  min-height: 64px;
   border-bottom: 2px solid var(--felt-border);
 }
 
 .pass-label {
   color: white;
-  font-size: 2.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
@@ -640,8 +821,10 @@ body {
 .odds-bet {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   min-height: 50px;
   border: 1px dashed var(--felt-border);
 }
@@ -1048,8 +1231,9 @@ body {
   flex-wrap: nowrap;
   overflow: hidden;
   gap: 3px;
-  width: 100%;
-  min-height: 34px;
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
   align-items: center;
 }
 
@@ -1101,22 +1285,19 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.6), 0 0 7px rgba(187,85,255,0.5);
 }
 
-/* ===== CONTROLS ===== */
+/* ===== CONTROLS (sticky bottom bar — always on screen) ===== */
 .controls {
+  position: sticky;
+  bottom: 0;
+  z-index: 200;
   background: linear-gradient(135deg, #2a2a4a, #222240);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 1rem;
+  border-top: 2px solid var(--gold);
+  padding: 0.55rem 0.7rem;
+  padding-bottom: max(0.55rem, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.bet-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
 }
 
 .bet-amount-label {
@@ -1126,15 +1307,17 @@ body {
 
 .chip-selector {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
 }
 
 .chip-btn {
   background: linear-gradient(135deg, var(--chip-blue), #1a3a88);
   color: white;
   border: 2px solid var(--chip-blue);
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.85rem;
   border-radius: 20px;
   cursor: pointer;
   font-weight: 600;
@@ -1153,18 +1336,13 @@ body {
   box-shadow: 0 0 12px rgba(34, 170, 68, 0.5);
 }
 
-.custom-bet {
-  display: flex;
-  gap: 0.5rem;
-}
-
 #bet-amount {
   background: #333;
   color: var(--text-light);
   border: 1px solid #555;
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   border-radius: 4px;
-  width: 100px;
+  width: 80px;
   font-size: 0.9rem;
 }
 
@@ -1176,27 +1354,27 @@ body {
 
 .action-buttons {
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 0.9rem;
+  min-height: 46px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
   transition: all 0.2s;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
 .btn-roll {
   background: linear-gradient(135deg, var(--chip-green), #1a6b2e);
   color: white;
-  flex: 1;
-  min-width: 150px;
+  flex: 2;
+  min-width: 0;
 }
 
 .btn-roll:hover:not(:disabled) {
@@ -1212,7 +1390,8 @@ body {
 .btn-clear {
   background: var(--danger);
   color: white;
-  min-width: 130px;
+  flex: 1;
+  min-width: 0;
 }
 
 .btn-clear:hover {
@@ -1223,7 +1402,8 @@ body {
 .btn-new-game {
   background: var(--chip-blue);
   color: white;
-  min-width: 130px;
+  flex: 1;
+  min-width: 0;
 }
 
 .btn-new-game:hover {

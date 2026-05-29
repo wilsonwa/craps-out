@@ -55,6 +55,9 @@
     LAY_9: 'lay-9',
     LAY_10: 'lay-10',
     PUT: 'put',
+    SMALL: 'small',
+    TALL: 'tall',
+    ALL: 'all',
   });
 
   var Outcome = Object.freeze({
@@ -126,12 +129,18 @@
     'lay-9': [2, 3],
     'lay-10': [1, 2],
     'put': [1, 1],
+    'small': [30, 1],
+    'tall': [30, 1],
+    'all': [150, 1],
   });
 
   var NATURALS = Object.freeze([7, 11]);
   var CRAPS_NUMBERS = Object.freeze([2, 3, 12]);
   var POINT_NUMBERS = Object.freeze([4, 5, 6, 8, 9, 10]);
   var FIELD_NUMBERS = Object.freeze([2, 3, 4, 9, 10, 11, 12]);
+  var SMALL_NUMBERS = Object.freeze([2, 3, 4, 5, 6]);
+  var TALL_NUMBERS = Object.freeze([8, 9, 10, 11, 12]);
+  var ALL_NUMBERS = Object.freeze([2, 3, 4, 5, 6, 8, 9, 10, 11, 12]);
   var MIN_BET = 1;
   var BUY_NUMBERS = Object.freeze({
     'buy-4': 4,
@@ -162,6 +171,9 @@
     CRAPS_NUMBERS: CRAPS_NUMBERS,
     POINT_NUMBERS: POINT_NUMBERS,
     FIELD_NUMBERS: FIELD_NUMBERS,
+    SMALL_NUMBERS: SMALL_NUMBERS,
+    TALL_NUMBERS: TALL_NUMBERS,
+    ALL_NUMBERS: ALL_NUMBERS,
     MIN_BET: MIN_BET,
     BUY_NUMBERS: BUY_NUMBERS,
     BUY_COMMISSION: BUY_COMMISSION,
@@ -296,6 +308,13 @@
       case BetType.HARD_10:
         break;
       case BetType.FIELD:
+        break;
+      case BetType.SMALL:
+      case BetType.TALL:
+      case BetType.ALL:
+        if (phase !== Phase.COME_OUT) {
+          return { valid: false, message: 'Small/Tall/All bets can only be placed on the come-out roll.' };
+        }
         break;
     }
     return { valid: true };
@@ -434,6 +453,9 @@
   var NATURALS = C.NATURALS;
   var CRAPS_NUMBERS = C.CRAPS_NUMBERS;
   var FIELD_NUMBERS = C.FIELD_NUMBERS;
+  var SMALL_NUMBERS = C.SMALL_NUMBERS;
+  var TALL_NUMBERS = C.TALL_NUMBERS;
+  var ALL_NUMBERS = C.ALL_NUMBERS;
 
   function calcPayout(wager, ratio) {
     return wager + (wager * ratio[0]) / ratio[1];
@@ -465,7 +487,11 @@
   BetManager.prototype.getAll = function () {
     var out = {};
     this._bets.forEach(function (bets, type) {
-      if (bets.length > 0) out[type] = bets.map(function (b) { return { amount: b.amount, point: b.point }; });
+      if (bets.length > 0) out[type] = bets.map(function (b) {
+        var copy = { amount: b.amount, point: b.point };
+        if (b.need) copy.need = b.need.slice();
+        return copy;
+      });
     });
     return out;
   };
@@ -545,6 +571,11 @@
 
     // Put bet (point phase, like pass after point)
     this._resolvePut(sum, phase, point, wins, losses);
+
+    // ATS bonus bets (multi-roll: collect all numbers before a 7)
+    this._resolveATS(BetType.SMALL, SMALL_NUMBERS, sum, wins, losses);
+    this._resolveATS(BetType.TALL, TALL_NUMBERS, sum, wins, losses);
+    this._resolveATS(BetType.ALL, ALL_NUMBERS, sum, wins, losses);
 
     return { wins: wins, losses: losses, pushes: pushes };
   };
@@ -813,6 +844,33 @@
       bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
       this.clearType(betType);
     }
+  };
+
+  /**
+   * ATS bonus bets (Small / Tall / All). Each wager tracks its own remaining
+   * target numbers (`need`). The wager wins when every target has been rolled
+   * before a 7, and loses the moment a 7 appears. Tracking starts when the bet
+   * is placed (need initialized lazily to the full target set).
+   */
+  BetManager.prototype._resolveATS = function (betType, targets, sum, wins, losses) {
+    if (!this.has(betType)) return;
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (!b.need) b.need = targets.slice();
+      if (sum === 7) {
+        losses.push({ betType: betType, amount: b.amount });
+        return; // bet drops on seven
+      }
+      var idx = b.need.indexOf(sum);
+      if (idx !== -1) b.need.splice(idx, 1);
+      if (b.need.length === 0) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) });
+        return; // collected them all
+      }
+      remaining.push(b);
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   BetManager.prototype._resolvePut = function (sum, phase, point, wins, losses) {

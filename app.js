@@ -10,6 +10,9 @@
   var Outcome = CrapsConstants.Outcome;
   var GameEvent = CrapsConstants.GameEvent;
   var POINT_NUMBERS = CrapsConstants.POINT_NUMBERS;
+  var SMALL_NUMBERS = CrapsConstants.SMALL_NUMBERS;
+  var TALL_NUMBERS = CrapsConstants.TALL_NUMBERS;
+  var ALL_NUMBERS = CrapsConstants.ALL_NUMBERS;
 
   // ---- DOM References ----
   var dom = {
@@ -68,6 +71,9 @@
     'lay-9': 'Lay 9',
     'lay-10': 'Lay 10',
     'put': 'Put',
+    'small': 'All Small',
+    'tall': 'All Tall',
+    'all': 'Make Em All',
     'pass-odds': 'Pass Odds',
     'dont-pass-odds': "Don't Pass Odds",
     'come-odds': 'Come Odds',
@@ -277,6 +283,43 @@
     dom.totalWagered.textContent = formatCurrency(totalWager);
   }
 
+  function appendChip(stackEl, total, extraClass) {
+    if (!stackEl || total <= 0) return;
+    var chip = document.createElement('div');
+    chip.className = 'chip ' + getChipClass(total) + (extraClass ? ' ' + extraClass : '');
+    chip.textContent = formatChipLabel(total);
+    stackEl.appendChild(chip);
+  }
+
+  // Come / Don't Come bets that have traveled to a point render in the
+  // corresponding number box; un-pointed ones stay in the COME / DC bar.
+  function renderTravelingChips(arr, baseId, ptPrefix, extraClass) {
+    if (!arr) return;
+    var flat = 0;
+    var byPoint = {};
+    arr.forEach(function (b) {
+      if (b.point == null) flat += b.amount;
+      else byPoint[b.point] = (byPoint[b.point] || 0) + b.amount;
+    });
+    appendChip(document.getElementById(baseId), flat, extraClass);
+    Object.keys(byPoint).forEach(function (pt) {
+      appendChip(document.getElementById(ptPrefix + pt), byPoint[pt], extraClass);
+    });
+  }
+
+  function renderAtsProgress(bets) {
+    var map = { small: SMALL_NUMBERS, tall: TALL_NUMBERS, all: ALL_NUMBERS };
+    Object.keys(map).forEach(function (t) {
+      var el = document.getElementById('ats-progress-' + t);
+      if (!el) return;
+      var arr = bets[t];
+      if (!arr || !arr.length) { el.textContent = ''; return; }
+      var total = map[t].length;
+      var need = arr[0].need ? arr[0].need.length : total;
+      el.textContent = (total - need) + '/' + total;
+    });
+  }
+
   function renderChipStacks() {
     document.querySelectorAll('.chip-stack').forEach(function (stack) {
       stack.innerHTML = '';
@@ -284,16 +327,15 @@
 
     var bets = game.getBets();
     Object.keys(bets).forEach(function (type) {
+      if (type === 'come' || type === 'dont-come') return; // handled below
       var total = 0;
       bets[type].forEach(function (b) { total += b.amount; });
-      var stack = document.getElementById('chips-' + type);
-      if (stack && total > 0) {
-        var chip = document.createElement('div');
-        chip.className = 'chip ' + getChipClass(total);
-        chip.textContent = formatChipLabel(total);
-        stack.appendChild(chip);
-      }
+      appendChip(document.getElementById('chips-' + type), total);
     });
+
+    renderTravelingChips(bets['come'], 'chips-come', 'chips-come-pt-', 'come-chip');
+    renderTravelingChips(bets['dont-come'], 'chips-dont-come', 'chips-dc-pt-', 'dc-chip');
+    renderAtsProgress(bets);
 
     Object.keys(SPLIT_BET_MAP).forEach(function (splitKey) {
       var parts = SPLIT_BET_MAP[splitKey];

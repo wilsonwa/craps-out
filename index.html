@@ -53,6 +53,8 @@
 
             <div class="number-boxes">
               <div class="number-box" data-number="4">
+                <div class="come-chip-spot" id="chips-come-pt-4" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-4" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-4"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-4" aria-label="Lay 4">
                   <span class="lay-label">Lay</span>
@@ -60,6 +62,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-4" aria-label="Place 4">
                   <span class="number-label">4</span>
+                  <span class="place-odds">9:5</span>
                   <div class="chip-stack" id="chips-place-4"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-4" aria-label="Buy 4">
@@ -69,6 +72,8 @@
               </div>
 
               <div class="number-box" data-number="5">
+                <div class="come-chip-spot" id="chips-come-pt-5" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-5" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-5"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-5" aria-label="Lay 5">
                   <span class="lay-label">Lay</span>
@@ -76,6 +81,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-5" aria-label="Place 5">
                   <span class="number-label">5</span>
+                  <span class="place-odds">7:5</span>
                   <div class="chip-stack" id="chips-place-5"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-5" aria-label="Buy 5">
@@ -85,6 +91,8 @@
               </div>
 
               <div class="number-box" data-number="6">
+                <div class="come-chip-spot" id="chips-come-pt-6" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-6" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-6"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-6" aria-label="Lay 6">
                   <span class="lay-label">Lay</span>
@@ -92,6 +100,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-6" aria-label="Place 6">
                   <span class="number-label">SIX</span>
+                  <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-6"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-6" aria-label="Buy 6">
@@ -101,6 +110,8 @@
               </div>
 
               <div class="number-box" data-number="8">
+                <div class="come-chip-spot" id="chips-come-pt-8" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-8" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-8"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-8" aria-label="Lay 8">
                   <span class="lay-label">Lay</span>
@@ -108,6 +119,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-8" aria-label="Place 8">
                   <span class="number-label">EIGHT</span>
+                  <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-8"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-8" aria-label="Buy 8">
@@ -117,6 +129,8 @@
               </div>
 
               <div class="number-box" data-number="9">
+                <div class="come-chip-spot" id="chips-come-pt-9" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-9" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-9"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-9" aria-label="Lay 9">
                   <span class="lay-label">Lay</span>
@@ -124,6 +138,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-9" aria-label="Place 9">
                   <span class="number-label">NINE</span>
+                  <span class="place-odds">7:5</span>
                   <div class="chip-stack" id="chips-place-9"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-9" aria-label="Buy 9">
@@ -133,6 +148,8 @@
               </div>
 
               <div class="number-box" data-number="10">
+                <div class="come-chip-spot" id="chips-come-pt-10" title="Come point"></div>
+                <div class="dc-chip-spot" id="chips-dc-pt-10" title="Don't come point"></div>
                 <div class="point-marker" id="point-marker-10"></div>
                 <button class="bet-area number-bet-lay" data-bet="lay-10" aria-label="Lay 10">
                   <span class="lay-label">Lay</span>
@@ -140,6 +157,7 @@
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-10" aria-label="Place 10">
                   <span class="number-label">10</span>
+                  <span class="place-odds">9:5</span>
                   <div class="chip-stack" id="chips-place-10"></div>
                 </button>
                 <button class="bet-area number-bet-buy" data-bet="buy-10" aria-label="Buy 10">
@@ -161,11 +179,69 @@
             </div>
           </div>
 
+          <!-- BONUS ROW: All Small / All Tall / All (ATS) — come-out roll only -->
+          <div class="ats-row" aria-label="Bonus bets">
+            <button class="bet-area ats-bet ats-small" data-bet="small" aria-label="All Small 2 3 4 5 6">
+              <span class="ats-title">SMALL</span>
+              <span class="ats-nums">2 3 4 5 6</span>
+              <span class="ats-progress" id="ats-progress-small"></span>
+              <span class="payout-label">30:1</span>
+              <div class="chip-stack" id="chips-small"></div>
+            </button>
+            <button class="bet-area ats-bet ats-all" data-bet="all" aria-label="All numbers">
+              <span class="ats-title">ALL</span>
+              <span class="ats-nums">make 'em all</span>
+              <span class="ats-progress" id="ats-progress-all"></span>
+              <span class="payout-label">150:1</span>
+              <div class="chip-stack" id="chips-all"></div>
+            </button>
+            <button class="bet-area ats-bet ats-tall" data-bet="tall" aria-label="All Tall 8 9 10 11 12">
+              <span class="ats-title">TALL</span>
+              <span class="ats-nums">8 9 10 11 12</span>
+              <span class="ats-progress" id="ats-progress-tall"></span>
+              <span class="payout-label">30:1</span>
+              <div class="chip-stack" id="chips-tall"></div>
+            </button>
+          </div>
+
           <!-- ROW 2: COME area -->
           <button class="bet-area come-area" data-bet="come" aria-label="Come">
             <span class="come-label">COME</span>
+            <span class="band-payout">wins 7 / 11 &bull; travels to box on point</span>
             <div class="chip-stack" id="chips-come"></div>
           </button>
+
+          <!-- DICE ON BOARD -->
+          <div class="table-center" aria-label="Dice">
+            <div class="dice-container">
+              <div class="die" id="die-1" aria-label="Die 1">
+                <div class="die-face" data-value="1">
+                  <span class="dot top-left"></span>
+                  <span class="dot top-right"></span>
+                  <span class="dot mid-left"></span>
+                  <span class="dot center"></span>
+                  <span class="dot mid-right"></span>
+                  <span class="dot bottom-left"></span>
+                  <span class="dot bottom-right"></span>
+                </div>
+              </div>
+              <div class="die" id="die-2" aria-label="Die 2">
+                <div class="die-face" data-value="1">
+                  <span class="dot top-left"></span>
+                  <span class="dot top-right"></span>
+                  <span class="dot mid-left"></span>
+                  <span class="dot center"></span>
+                  <span class="dot mid-right"></span>
+                  <span class="dot bottom-left"></span>
+                  <span class="dot bottom-right"></span>
+                </div>
+              </div>
+            </div>
+            <div class="dice-total">
+              <span>Total</span>
+              <span id="dice-total-value">&ndash;</span>
+            </div>
+          </div>
 
           <!-- ROW 3: FIELD area — 3 sections, all place the same field bet -->
           <div class="field-area field-row">
@@ -194,6 +270,7 @@
           <!-- ROW 4: Don't Pass Bar -->
           <button class="bet-area dont-pass-area" data-bet="dont-pass" aria-label="Don't Pass">
             <span class="bet-label">Don't Pass Bar</span>
+            <span class="band-payout">pays even</span>
             <div class="chip-stack" id="chips-dont-pass"></div>
           </button>
 
@@ -201,6 +278,7 @@
           <div class="pass-line-row">
             <button class="bet-area pass-area" data-bet="pass" aria-label="Pass Line">
               <span class="pass-label">PASS LINE</span>
+              <span class="band-payout">pays even</span>
               <div class="chip-stack" id="chips-pass"></div>
             </button>
             <button class="bet-area put-bet" data-bet="put" aria-label="Put Bet">
@@ -213,10 +291,12 @@
           <div class="odds-zone">
             <button class="bet-area odds-bet pass-odds" data-bet="pass-odds" aria-label="Pass Odds">
               <span class="bet-label">Pass Odds</span>
+              <span class="odds-payout">true odds</span>
               <div class="chip-stack" id="chips-pass-odds"></div>
             </button>
             <button class="bet-area odds-bet dont-pass-odds" data-bet="dont-pass-odds" aria-label="Don't Pass Odds">
               <span class="bet-label">Don't Pass Odds</span>
+              <span class="odds-payout">true odds</span>
               <div class="chip-stack" id="chips-dont-pass-odds"></div>
             </button>
           </div>
@@ -231,6 +311,12 @@
               <span class="bet-label">Don't Come Odds</span>
               <div class="chip-stack" id="chips-dont-come-odds"></div>
             </button>
+          </div>
+
+          <!-- DICE ROLL HISTORY — bottom of the board -->
+          <div class="dice-history-bar">
+            <span class="dice-history-label">Last rolls</span>
+            <div id="dice-roll-history" class="dice-roll-history" aria-label="Recent roll history"></div>
           </div>
 
         </div>
@@ -393,61 +479,6 @@
 
     </div>
 
-    <!-- Dice Area -->
-    <section class="dice-area" aria-label="Dice display">
-      <div class="dice-container">
-        <div class="die" id="die-1" aria-label="Die 1">
-          <div class="die-face" data-value="1">
-            <span class="dot top-left"></span>
-            <span class="dot top-right"></span>
-            <span class="dot mid-left"></span>
-            <span class="dot center"></span>
-            <span class="dot mid-right"></span>
-            <span class="dot bottom-left"></span>
-            <span class="dot bottom-right"></span>
-          </div>
-        </div>
-        <div class="die" id="die-2" aria-label="Die 2">
-          <div class="die-face" data-value="1">
-            <span class="dot top-left"></span>
-            <span class="dot top-right"></span>
-            <span class="dot mid-left"></span>
-            <span class="dot center"></span>
-            <span class="dot mid-right"></span>
-            <span class="dot bottom-left"></span>
-            <span class="dot bottom-right"></span>
-          </div>
-        </div>
-      </div>
-      <div class="dice-total">
-        <span>Total: </span>
-        <span id="dice-total-value">-</span>
-      </div>
-      <div id="dice-roll-history" class="dice-roll-history" aria-label="Recent roll history" style="display:flex;flex-direction:row;flex-wrap:nowrap;overflow:hidden;gap:3px;width:100%;min-height:34px;align-items:center;"></div>
-    </section>
-
-    <!-- Controls -->
-    <section class="controls" aria-label="Game controls">
-      <div class="bet-controls">
-        <label for="bet-amount" class="bet-amount-label">Bet Amount:</label>
-        <div class="chip-selector">
-          <button class="chip-btn" data-value="1" aria-label="Select $1 chip">$1</button>
-          <button class="chip-btn" data-value="5" aria-label="Select $5 chip">$5</button>
-          <button class="chip-btn selected" data-value="25" aria-label="Select $25 chip">$25</button>
-          <button class="chip-btn" data-value="100" aria-label="Select $100 chip">$100</button>
-          <button class="chip-btn" data-value="500" aria-label="Select $500 chip">$500</button>
-        </div>
-        <div class="custom-bet">
-          <input type="number" id="bet-amount" min="1" value="25" aria-label="Custom bet amount">
-        </div>
-      </div>
-      <div class="action-buttons">
-        <button id="btn-roll" class="btn btn-roll" aria-label="Roll the dice">Roll Dice</button>
-        <button id="btn-clear-bets" class="btn btn-clear" aria-label="Clear all bets">Clear Bets</button>
-        <button id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New Game</button>
-      </div>
-    </section>
-
     <!-- Betting History -->
     <section class="betting-history" aria-label="Betting outcome history">
       <h2>Bet Results</h2>
@@ -477,9 +508,22 @@
     </section>
   </main>
 
-  <footer class="game-footer">
-    <p>Craps &mdash; For entertainment and educational purposes only</p>
-  </footer>
+  <!-- Sticky Controls — always on screen -->
+  <section class="controls" aria-label="Game controls">
+    <div class="chip-selector">
+      <button class="chip-btn" data-value="1" aria-label="Select $1 chip">$1</button>
+      <button class="chip-btn" data-value="5" aria-label="Select $5 chip">$5</button>
+      <button class="chip-btn selected" data-value="25" aria-label="Select $25 chip">$25</button>
+      <button class="chip-btn" data-value="100" aria-label="Select $100 chip">$100</button>
+      <button class="chip-btn" data-value="500" aria-label="Select $500 chip">$500</button>
+      <input type="number" id="bet-amount" min="1" value="25" aria-label="Custom bet amount">
+    </div>
+    <div class="action-buttons">
+      <button id="btn-roll" class="btn btn-roll" aria-label="Roll the dice">Roll Dice</button>
+      <button id="btn-clear-bets" class="btn btn-clear" aria-label="Clear all bets">Clear</button>
+      <button id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New</button>
+    </div>
+  </section>
 
   <script src="craps-engine.js"></script>
   <script src="app.js"></script>
