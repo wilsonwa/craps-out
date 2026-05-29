@@ -13,6 +13,7 @@
   var SMALL_NUMBERS = CrapsConstants.SMALL_NUMBERS;
   var TALL_NUMBERS = CrapsConstants.TALL_NUMBERS;
   var ALL_NUMBERS = CrapsConstants.ALL_NUMBERS;
+  var PayoutTable = CrapsConstants.PayoutTable;
 
   // ---- DOM References ----
   var dom = {
@@ -32,6 +33,12 @@
     bettingHistoryList: document.getElementById('betting-history-list'),
     chipButtons: document.querySelectorAll('.chip-btn'),
     betAreas: document.querySelectorAll('.bet-area'),
+    oddsModal: document.getElementById('odds-modal'),
+    oddsModalTitle: document.getElementById('odds-modal-title'),
+    oddsModalSub: document.getElementById('odds-modal-sub'),
+    oddsOpt1x: document.getElementById('odds-opt-1x'),
+    oddsOpt2x: document.getElementById('odds-opt-2x'),
+    oddsOptNo: document.getElementById('odds-opt-no'),
   };
 
   // ---- State ----
@@ -318,21 +325,25 @@
   }
 
   function renderChipStacks() {
-    document.querySelectorAll('.chip-stack').forEach(function (stack) {
+    document.querySelectorAll('.chip-stack, .come-chip-spot, .dc-chip-spot').forEach(function (stack) {
       stack.innerHTML = '';
     });
 
     var bets = game.getBets();
     Object.keys(bets).forEach(function (type) {
-      if (type === 'come' || type === 'dont-come') return; // handled below
+      // come / dont-come (travel to boxes) and come-odds (per point) handled below
+      if (type === 'come' || type === 'dont-come' || type === 'come-odds') return;
       var total = 0;
       var off = false;
       bets[type].forEach(function (b) { total += b.amount; if (b.working === false) off = true; });
-      appendChip(document.getElementById('chips-' + type), total, off ? 'off' : null);
+      var cls = type === 'pass-odds' ? 'odds-chip' : (off ? 'off' : null);
+      appendChip(document.getElementById('chips-' + type), total, cls);
     });
 
     renderTravelingChips(bets['come'], 'chips-come', 'chips-come-pt-', 'come-chip');
     renderTravelingChips(bets['dont-come'], 'chips-dont-come', 'chips-dc-pt-', 'dc-chip');
+    // Come odds sit in the same box as their come point, with a cyan ring
+    renderTravelingChips(bets['come-odds'], null, 'chips-come-pt-', 'odds-chip');
     renderAtsProgress(bets);
 
     Object.keys(SPLIT_BET_MAP).forEach(function (splitKey) {
@@ -685,6 +696,71 @@
     render();
   }
 
+  // ---- Take-odds popup (Bubble Craps style) ----
+  var pendingOdds = null; // { kind: 'pass'|'come', point, flat }
+
+  function oddsRatioText(point) {
+    var r = PayoutTable['odds_' + point];
+    return r ? r[0] + ':' + r[1] : '';
+  }
+
+  function showOddsPopup(kind, point, flat) {
+    if (!dom.oddsModal || !flat || flat <= 0) return;
+    pendingOdds = { kind: kind, point: point, flat: flat };
+    var ratio = PayoutTable['odds_' + point];
+    dom.oddsModalTitle.textContent =
+      (kind === 'pass' ? 'Point is ' + point : 'Come bet on ' + point) + ' — Take Odds?';
+    var win1 = ratio ? Math.floor(flat * ratio[0] / ratio[1]) : 0;
+    var win2 = ratio ? Math.floor(flat * 2 * ratio[0] / ratio[1]) : 0;
+    dom.oddsModalSub.innerHTML = 'True odds pay ' + oddsRatioText(point) + '.<br>'
+      + '1× risks ' + formatCurrency(flat) + ' to win ' + formatCurrency(win1) + ' • '
+      + '2× risks ' + formatCurrency(flat * 2) + ' to win ' + formatCurrency(win2);
+    dom.oddsOpt1x.innerHTML = '1×<span class="opt-amt">' + formatCurrency(flat) + '</span>';
+    dom.oddsOpt2x.innerHTML = '2×<span class="opt-amt">' + formatCurrency(flat * 2) + '</span>';
+    dom.oddsModal.classList.remove('hidden');
+  }
+
+  function closeOddsPopup() {
+    pendingOdds = null;
+    if (dom.oddsModal) dom.oddsModal.classList.add('hidden');
+  }
+
+  function applyOdds(multiple) {
+    if (!pendingOdds) return;
+    var amount = pendingOdds.flat * multiple;
+    var betType = pendingOdds.kind === 'pass' ? 'pass-odds' : 'come-odds';
+    var opts = pendingOdds.kind === 'come' ? { point: pendingOdds.point } : undefined;
+    var res = game.placeBet(betType, amount, opts);
+    setMessage(res.success ? formatBetName(betType) + ' ' + multiple + '× placed.' : res.message,
+      res.success ? 'success' : 'error');
+    closeOddsPopup();
+    render();
+  }
+
+  function maybePromptOdds(result, comePointsBefore) {
+    var bets = game.getBets();
+    // Pass point just established → offer pass odds
+    if (result.outcome === Outcome.POINT_SET && bets.pass && bets.pass.length) {
+      var flat = bets.pass.reduce(function (s, b) { return s + b.amount; }, 0);
+      showOddsPopup('pass', game.getPoint(), flat);
+      return;
+    }
+    // A come bet just traveled to a new number → offer come odds for it
+    var afterPts = (bets.come || []).filter(function (b) { return b.point != null; });
+    var beforeCount = {};
+    comePointsBefore.forEach(function (p) { beforeCount[p] = (beforeCount[p] || 0) + 1; });
+    var afterCount = {};
+    afterPts.forEach(function (b) { afterCount[b.point] = (afterCount[b.point] || 0) + 1; });
+    var newPoint = null;
+    Object.keys(afterCount).forEach(function (p) {
+      if (newPoint == null && afterCount[p] > (beforeCount[p] || 0)) newPoint = Number(p);
+    });
+    if (newPoint != null) {
+      var nb = afterPts.find(function (x) { return x.point === newPoint; });
+      showOddsPopup('come', newPoint, nb ? nb.amount : 0);
+    }
+  }
+
   function onRoll() {
     if (isRolling) return;
 
@@ -694,9 +770,14 @@
       return;
     }
 
+    var comePointsBefore = (bets.come || [])
+      .filter(function (b) { return b.point != null; })
+      .map(function (b) { return b.point; });
+
     animateRoll(function () {
       var result = game.roll();
       processRollResult(result);
+      maybePromptOdds(result, comePointsBefore);
     });
   }
 
@@ -745,6 +826,7 @@
 
   function onNewGame() {
     if (isRolling) return;
+    closeOddsPopup();
     game.reset();
     dom.historyList.innerHTML = '<p class="no-history">No rolls yet</p>';
     dom.bettingHistoryList.innerHTML = '<p class="no-history">No results yet</p>';
@@ -788,6 +870,14 @@
     });
 
     dom.betAmount.addEventListener('input', onBetAmountChange);
+
+    // Take-odds popup
+    if (dom.oddsOpt1x) dom.oddsOpt1x.addEventListener('click', function () { applyOdds(1); });
+    if (dom.oddsOpt2x) dom.oddsOpt2x.addEventListener('click', function () { applyOdds(2); });
+    if (dom.oddsOptNo) dom.oddsOptNo.addEventListener('click', closeOddsPopup);
+    if (dom.oddsModal) dom.oddsModal.addEventListener('click', function (e) {
+      if (e.target === dom.oddsModal) closeOddsPopup();
+    });
 
     updateChipCursor(selectedChipValue);
     render();

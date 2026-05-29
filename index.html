@@ -269,37 +269,14 @@
             <button class="bet-area pass-area" data-bet="pass" aria-label="Pass Line">
               <span class="pass-label">PASS LINE</span>
               <span class="band-payout">pays even</span>
-              <div class="chip-stack" id="chips-pass"></div>
+              <div class="pass-chips">
+                <div class="chip-stack" id="chips-pass"></div>
+                <div class="chip-stack odds-stack" id="chips-pass-odds" title="Pass odds"></div>
+              </div>
             </button>
             <button class="bet-area put-bet" data-bet="put" aria-label="Put Bet">
               <span class="put-label">PUT</span>
               <div class="chip-stack" id="chips-put"></div>
-            </button>
-          </div>
-
-          <!-- ROW 6: Odds zone -->
-          <div class="odds-zone">
-            <button class="bet-area odds-bet pass-odds" data-bet="pass-odds" aria-label="Pass Odds">
-              <span class="bet-label">Pass Odds</span>
-              <span class="odds-payout">true odds</span>
-              <div class="chip-stack" id="chips-pass-odds"></div>
-            </button>
-            <button class="bet-area odds-bet dont-pass-odds" data-bet="dont-pass-odds" aria-label="Don't Pass Odds">
-              <span class="bet-label">Don't Pass Odds</span>
-              <span class="odds-payout">true odds</span>
-              <div class="chip-stack" id="chips-dont-pass-odds"></div>
-            </button>
-          </div>
-
-          <!-- Come Odds / Don't Come Odds -->
-          <div class="come-odds-zone">
-            <button class="bet-area odds-bet come-odds-btn" data-bet="come-odds" aria-label="Come Odds">
-              <span class="bet-label">Come Odds</span>
-              <div class="chip-stack" id="chips-come-odds"></div>
-            </button>
-            <button class="bet-area odds-bet dont-come-odds-btn" data-bet="dont-come-odds" aria-label="Don't Come Odds">
-              <span class="bet-label">Don't Come Odds</span>
-              <div class="chip-stack" id="chips-dont-come-odds"></div>
             </button>
           </div>
 
@@ -514,6 +491,19 @@
       <button id="btn-new-game" class="btn btn-new-game" aria-label="Start a new game">New</button>
     </div>
   </section>
+
+  <!-- Take-odds popup (Bubble Craps style) -->
+  <div class="odds-modal hidden" id="odds-modal" role="dialog" aria-modal="true" aria-labelledby="odds-modal-title">
+    <div class="odds-modal-card">
+      <div class="odds-modal-title" id="odds-modal-title">Take Odds?</div>
+      <div class="odds-modal-sub" id="odds-modal-sub"></div>
+      <div class="odds-modal-actions">
+        <button class="odds-opt" id="odds-opt-1x" type="button">1&times;</button>
+        <button class="odds-opt" id="odds-opt-2x" type="button">2&times;</button>
+      </div>
+      <button class="odds-no" id="odds-opt-no" type="button">No Odds</button>
+    </div>
+  </div>
 
   <script src="craps-engine.js"></script>
   <script src="app.js"></script>

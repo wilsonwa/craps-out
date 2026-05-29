@@ -390,6 +390,30 @@ body {
   box-shadow: 0 0 0 2px #ff5555, 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
+/* Odds chips — a cyan ring marks the "true odds" backing bet */
+.chip.odds-chip {
+  box-shadow: 0 0 0 2px #5cc6ff, 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Come point box holds the come chip + its odds chip side by side */
+.come-chip-spot {
+  flex-direction: row;
+  gap: 2px;
+}
+
+.come-chip-spot .chip {
+  width: 20px;
+  height: 20px;
+  font-size: 0.5rem;
+}
+
+/* Pass line: flat chip + odds chip shown together */
+.pass-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Point marker (ON puck) — shown only on the box that is the current point.
    The single OFF puck lives in the Don't Come bar (see .off-puck). */
 .point-marker {
@@ -600,13 +624,6 @@ body {
 
 .come-area .band-payout {
   color: rgba(255, 255, 255, 0.55);
-}
-
-.odds-payout {
-  font-size: 0.55rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  text-transform: uppercase;
 }
 
 /* ===== DICE ON THE BOARD ===== */
@@ -823,60 +840,6 @@ body {
 
 .put-bet.hidden {
   display: none;
-}
-
-/* ===== ROW 6: Odds Zone ===== */
-.odds-zone {
-  display: flex;
-  border-bottom: 2px solid var(--felt-border);
-}
-
-.odds-bet {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  min-height: 50px;
-  border: 1px dashed var(--felt-border);
-}
-
-.odds-bet .bet-label {
-  color: var(--felt-border);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.pass-odds {
-  border-right: 1px dashed var(--felt-border);
-}
-
-/* Come Odds Zone */
-.come-odds-zone {
-  display: flex;
-}
-
-.come-odds-btn,
-.dont-come-odds-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  border: 1px dashed var(--felt-border);
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.come-odds-btn .bet-label,
-.dont-come-odds-btn .bet-label {
-  color: var(--felt-border);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.come-odds-btn {
-  border-right: 1px dashed var(--felt-border);
 }
 
 /* ===== PROPOSITION SIDEBAR ===== */
@@ -1837,6 +1800,98 @@ body {
   text-align: center;
   color: #888;
   font-size: 0.9rem;
+}
+
+/* ===== TAKE-ODDS POPUP ===== */
+.odds-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.odds-modal.hidden {
+  display: none;
+}
+
+.odds-modal-card {
+  width: 100%;
+  max-width: 320px;
+  background: linear-gradient(135deg, #20203a, #2a2a4a);
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.odds-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--gold-light);
+  margin-bottom: 0.35rem;
+}
+
+.odds-modal-sub {
+  font-size: 0.85rem;
+  color: #cfd0e0;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.odds-modal-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.odds-opt {
+  flex: 1;
+  padding: 0.85rem 0.5rem;
+  min-height: 52px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, var(--chip-green), #1a6b2e);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.odds-opt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(34, 170, 68, 0.4);
+}
+
+.odds-opt .opt-amt {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.odds-no {
+  width: 100%;
+  padding: 0.6rem;
+  min-height: 44px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: transparent;
+  color: #bbb;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.odds-no:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
