@@ -17,8 +17,6 @@
   // ---- DOM References ----
   var dom = {
     balance: document.getElementById('player-balance'),
-    phase: document.getElementById('game-phase'),
-    pointValue: document.getElementById('point-value'),
     message: document.getElementById('game-message'),
     die1: document.getElementById('die-1'),
     die2: document.getElementById('die-2'),
@@ -219,18 +217,14 @@
   }
 
   function renderPhase() {
-    var state = game.getGameState();
+    // Phase / point are shown on the board via the ON/OFF puck.
+    // Here we only show/hide the PUT bet, which is point-phase only.
     var putBtn = document.querySelector('.put-bet');
-    if (state.phase === Phase.COME_OUT) {
-      dom.phase.textContent = 'Come-Out Roll';
-      dom.pointValue.textContent = 'OFF';
-      dom.pointValue.style.color = '#888';
-      if (putBtn) putBtn.classList.add('hidden');
+    if (!putBtn) return;
+    if (game.getGameState().phase === Phase.COME_OUT) {
+      putBtn.classList.add('hidden');
     } else {
-      dom.phase.textContent = 'Point Phase';
-      dom.pointValue.textContent = state.point;
-      dom.pointValue.style.color = 'var(--point-on)';
-      if (putBtn) putBtn.classList.remove('hidden');
+      putBtn.classList.remove('hidden');
     }
   }
 
@@ -676,14 +670,14 @@
     renderDice(result.dice.die1, result.dice.die2);
     addDiceHistoryChip(result.dice.die1, result.dice.die2, result.dice.sum);
 
-    var msg = (OUTCOME_MESSAGES[result.outcome] || 'Rolled {sum}')
-      .replace(/\{sum\}/g, result.dice.sum);
-    msg += buildResultSummary(result.resolved);
+    // Net dollar result of this roll, shown as a number next to the balance.
+    var net = 0;
+    result.resolved.wins.forEach(function (w) { net += w.payout - w.amount; });
+    result.resolved.losses.forEach(function (l) { net -= l.amount; });
 
-    var msgType = 'info';
-    if (result.resolved.wins.length > 0) msgType = 'success';
-    else if (result.resolved.losses.length > 0) msgType = 'error';
-    setMessage(msg, msgType);
+    if (net > 0) setMessage('+' + formatCurrency(net), 'success');
+    else if (net < 0) setMessage('-' + formatCurrency(-net), 'error');
+    else setMessage('–', 'info'); // no change
 
     addHistoryItem(result.dice, result.outcome);
     addBettingHistoryEntry(game.getGameState().totalRolls, result.dice, result.resolved);

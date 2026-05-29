@@ -69,18 +69,37 @@ body {
 .player-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
   font-size: 1.1rem;
 }
 
 .balance-label {
   color: #aaa;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .balance-amount {
   font-weight: 700;
   color: var(--success);
   font-size: 1.3rem;
+}
+
+/* Last-roll result, shown next to the balance (replaces the old status row) */
+.result-chip {
+  min-width: 3rem;
+  max-width: 13rem;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.15;
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-light);
 }
 
 /* ===== Main Container ===== */
@@ -95,49 +114,6 @@ body {
   gap: 1rem;
 }
 
-/* ===== Game Status ===== */
-.game-status {
-  background: linear-gradient(135deg, #222240, #2a2a4a);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.phase-indicator,
-.point-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.phase-label,
-.point-label {
-  color: #999;
-  font-size: 0.9rem;
-}
-
-.phase-value {
-  font-weight: 600;
-  color: var(--accent);
-  font-size: 1rem;
-}
-
-.point-value {
-  font-weight: 700;
-  font-size: 1rem;
-}
-
-.game-message {
-  flex: 1;
-  text-align: right;
-  color: var(--text-light);
-  font-style: italic;
-  font-size: 0.95rem;
-}
 
 /* =========================================================
    TABLE LAYOUT - Two-Column: Table + Prop Sidebar

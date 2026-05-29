@@ -16,24 +16,13 @@
   <header class="game-header">
     <h1>Craps</h1>
     <div class="player-info">
-      <span class="balance-label">Balance:</span>
+      <span class="balance-label">Balance</span>
       <span id="player-balance" class="balance-amount">$1000</span>
+      <span id="game-message" class="result-chip" aria-live="polite" role="status">&ndash;</span>
     </div>
   </header>
 
   <main class="game-container">
-    <!-- Game Status Bar -->
-    <section class="game-status" aria-live="polite">
-      <div class="phase-indicator">
-        <span class="phase-label">Phase:</span>
-        <span id="game-phase" class="phase-value">Come-Out Roll</span>
-      </div>
-      <div class="point-indicator">
-        <span class="point-label">Point:</span>
-        <span id="point-value" class="point-value">OFF</span>
-      </div>
-      <div id="game-message" class="game-message">Place your bets and roll the dice!</div>
-    </section>
 
     <!-- ============================================ -->
     <!-- TABLE LAYOUT: Craps Table + Prop Sidebar     -->
