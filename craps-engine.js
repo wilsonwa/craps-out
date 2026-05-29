@@ -488,7 +488,7 @@
     var out = {};
     this._bets.forEach(function (bets, type) {
       if (bets.length > 0) out[type] = bets.map(function (b) {
-        var copy = { amount: b.amount, point: b.point };
+        var copy = { amount: b.amount, point: b.point, working: b.working !== false };
         if (b.need) copy.need = b.need.slice();
         return copy;
       });
@@ -506,6 +506,17 @@
 
   BetManager.prototype.clearType = function (betType) { this._bets.delete(betType); };
   BetManager.prototype.clearAll = function () { this._bets.clear(); };
+
+  // Flip the working state of every wager of a type. Returns the new state
+  // (true = working/on, false = not working/off), or null if no such bet.
+  BetManager.prototype.toggleWorking = function (betType) {
+    var arr = this._bets.get(betType);
+    if (!arr || !arr.length) return null;
+    var anyWorking = arr.some(function (b) { return b.working !== false; });
+    var nw = !anyWorking;
+    arr.forEach(function (b) { b.working = nw; });
+    return nw;
+  };
   BetManager.prototype.has = function (betType) {
     var b = this._bets.get(betType);
     return !!b && b.length > 0;
@@ -751,26 +762,38 @@
   BetManager.prototype._resolvePlace = function (betType, placeNum, sum, phase, wins, losses) {
     if (!this.has(betType)) return;
     if (phase !== Phase.POINT) return;
-    var bets = this._bets.get(betType);
-    if (sum === placeNum) {
-      bets.forEach(function (b) { wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) }); });
-      this.clearType(betType);
-    } else if (sum === 7) {
-      bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
-      this.clearType(betType);
-    }
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (b.working === false) { remaining.push(b); return; } // not working: ignore roll
+      if (sum === placeNum) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) });
+      } else if (sum === 7) {
+        losses.push({ betType: betType, amount: b.amount });
+      } else {
+        remaining.push(b);
+      }
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   BetManager.prototype._resolveBig = function (betType, bigNum, sum, phase, wins, losses) {
     if (!this.has(betType)) return;
     if (phase !== Phase.POINT) return;
-    var bets = this._bets.get(betType);
-    if (sum === bigNum) {
-      bets.forEach(function (b) { wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) }); });
-    } else if (sum === 7) {
-      bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
-      this.clearType(betType);
-    }
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (b.working === false) { remaining.push(b); return; }
+      if (sum === bigNum) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        remaining.push(b); // big bet stays up after a win
+      } else if (sum === 7) {
+        losses.push({ betType: betType, amount: b.amount });
+      } else {
+        remaining.push(b);
+      }
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   BetManager.prototype._resolveAnySeven = function (sum, wins, losses) {
@@ -797,17 +820,23 @@
 
   BetManager.prototype._resolveHardway = function (betType, hardNum, die1, die2, sum, wins, losses) {
     if (!this.has(betType)) return;
-    var bets = this._bets.get(betType);
     var isHard = sum === hardNum && die1 === die2;
     var isEasy = sum === hardNum && die1 !== die2;
     var isSeven = sum === 7;
-
-    if (isHard) {
-      bets.forEach(function (b) { wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) }); });
-    } else if (isEasy || isSeven) {
-      bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
-      this.clearType(betType);
-    }
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (b.working === false) { remaining.push(b); return; }
+      if (isHard) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        remaining.push(b); // hardway stays up after a win
+      } else if (isEasy || isSeven) {
+        losses.push({ betType: betType, amount: b.amount });
+      } else {
+        remaining.push(b);
+      }
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   BetManager.prototype._resolveHorn = function (betType, hornNum, sum, wins, losses) {
@@ -824,26 +853,38 @@
   BetManager.prototype._resolveBuy = function (betType, buyNum, sum, phase, wins, losses) {
     if (!this.has(betType)) return;
     if (phase !== Phase.POINT) return;
-    var bets = this._bets.get(betType);
-    if (sum === buyNum) {
-      bets.forEach(function (b) { wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) }); });
-    } else if (sum === 7) {
-      bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
-      this.clearType(betType);
-    }
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (b.working === false) { remaining.push(b); return; }
+      if (sum === buyNum) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        remaining.push(b); // buy bet stays up after a win
+      } else if (sum === 7) {
+        losses.push({ betType: betType, amount: b.amount });
+      } else {
+        remaining.push(b);
+      }
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   BetManager.prototype._resolveLay = function (betType, layNum, sum, phase, wins, losses) {
     if (!this.has(betType)) return;
     if (phase !== Phase.POINT) return;
-    var bets = this._bets.get(betType);
-    if (sum === 7) {
-      bets.forEach(function (b) { wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) }); });
-      this.clearType(betType);
-    } else if (sum === layNum) {
-      bets.forEach(function (b) { losses.push({ betType: betType, amount: b.amount }); });
-      this.clearType(betType);
-    }
+    var remaining = [];
+    this._bets.get(betType).forEach(function (b) {
+      if (b.working === false) { remaining.push(b); return; }
+      if (sum === 7) {
+        wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) });
+      } else if (sum === layNum) {
+        losses.push({ betType: betType, amount: b.amount });
+      } else {
+        remaining.push(b);
+      }
+    });
+    if (remaining.length > 0) this._bets.set(betType, remaining);
+    else this.clearType(betType);
   };
 
   /**
@@ -1099,6 +1140,22 @@
     this._state = this._state.update({ balance: this._state.balance + refund });
     this._emit('bet-removed', { betType: betType, refund: refund });
     return { success: true, refund: refund, message: 'Removed ' + betType + ' bet, refunded $' + refund + '.' };
+  };
+
+  /**
+   * Toggle a standing bet between working (on) and not-working (off).
+   * Not-working bets stay on the felt but neither win nor lose until turned
+   * back on. Only applies to multi-roll bets (place/buy/lay/big/hardways).
+   * @param {string} betType
+   * @returns {{success: boolean, working: boolean, message: string}}
+   */
+  CrapsGame.prototype.toggleWorking = function (betType) {
+    var nw = this._bets.toggleWorking(betType);
+    if (nw === null) {
+      return { success: false, working: false, message: 'No active ' + betType + ' bet to toggle.' };
+    }
+    this._emit('bet-toggled', { betType: betType, working: nw });
+    return { success: true, working: nw, message: betType + ' is now ' + (nw ? 'working' : 'off') + '.' };
   };
 
   CrapsGame.prototype.getStats = function () {

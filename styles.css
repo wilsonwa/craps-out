@@ -386,48 +386,63 @@ body {
   box-shadow: 0 0 0 2px #ffd700, 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
+/* Not-working ("OFF") bet — dimmed chip with an OFF lammer */
+.chip.off {
+  position: relative;
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.chip.off::after {
+  content: 'OFF';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(180, 0, 0, 0.92);
+  border-radius: 3px;
+  padding: 0 3px;
+  text-shadow: none;
+  pointer-events: none;
+}
+
 .chip.dc-chip {
   box-shadow: 0 0 0 2px #ff5555, 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Point markers inside number boxes */
+/* Point marker (ON puck) — shown only on the box that is the current point.
+   The single OFF puck lives in the Don't Come bar (see .off-puck). */
 .point-marker {
   position: absolute;
-  top: 28px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
+  top: 2px;
+  right: 2px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: #333;
-  border: 2px solid #666;
-  z-index: 5;
+  z-index: 7;
   pointer-events: none;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 900;
-  color: transparent;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
   transition: all 0.3s ease;
 }
 
-.point-marker::after {
-  content: 'OFF';
-  font-size: 0.4rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: #888;
-}
-
 .point-marker.on {
+  display: flex;
   background: #FFFFFF;
-  border-color: #FFD700;
+  border: 2px solid #FFD700;
   color: #000;
   box-shadow:
-    0 0 12px rgba(255, 215, 0, 0.5),
-    0 0 24px rgba(255, 215, 0, 0.3);
+    0 0 12px rgba(255, 215, 0, 0.6),
+    0 0 24px rgba(255, 215, 0, 0.35);
   animation: pulseMarker 1.5s ease-in-out infinite;
 }
 
@@ -435,6 +450,28 @@ body {
   content: 'ON';
   color: #000;
   font-weight: bold;
+}
+
+/* OFF puck — sits in the Don't Come bar during the come-out roll */
+.off-puck {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 2px solid #999;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.off-puck.hidden {
+  display: none;
 }
 
 .point-marker.glow-burst {

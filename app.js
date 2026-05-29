@@ -253,6 +253,9 @@
         });
       }
     });
+    // Single OFF puck lives in the Don't Come bar during the come-out roll
+    var offPuck = document.getElementById('off-puck');
+    if (offPuck) offPuck.classList.toggle('hidden', point !== null);
     _previousPoint = point;
   }
 
@@ -329,8 +332,9 @@
     Object.keys(bets).forEach(function (type) {
       if (type === 'come' || type === 'dont-come') return; // handled below
       var total = 0;
-      bets[type].forEach(function (b) { total += b.amount; });
-      appendChip(document.getElementById('chips-' + type), total);
+      var off = false;
+      bets[type].forEach(function (b) { total += b.amount; if (b.working === false) off = true; });
+      appendChip(document.getElementById('chips-' + type), total, off ? 'off' : null);
     });
 
     renderTravelingChips(bets['come'], 'chips-come', 'chips-come-pt-', 'come-chip');
@@ -582,10 +586,51 @@
 
   // ---- Event Handlers ----
 
+  // ---- Long-press to toggle a standing bet working / off ----
+  var TOGGLEABLE = /^(place|buy|lay)-\d+$|^big-(6|8)$|^hard-\d+$/;
+  var LONG_PRESS_MS = 500;
+  var pressTimer = null;
+  var longPressFired = false;
+
+  function onBetToggle(area) {
+    var betType = area.dataset.bet;
+    if (!betType || isRolling) return;
+    if (!TOGGLEABLE.test(betType)) {
+      setMessage(formatBetName(betType) + " can't be turned off.", 'info');
+      return;
+    }
+    var bets = game.getBets();
+    if (!bets[betType] || !bets[betType].length) {
+      setMessage('No ' + formatBetName(betType) + ' bet to toggle.', 'info');
+      return;
+    }
+    var res = game.toggleWorking(betType);
+    if (res.success) {
+      setMessage(formatBetName(betType) + (res.working ? ' is ON (working).' : ' is OFF (not working).'),
+        res.working ? 'success' : 'info');
+    }
+    render();
+  }
+
+  function onPressStart(e) {
+    var area = e.currentTarget;
+    longPressFired = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(function () {
+      longPressFired = true;
+      onBetToggle(area);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelPress() {
+    clearTimeout(pressTimer);
+  }
+
   function onBetAreaClick(e) {
     var area = e.currentTarget;
     var betType = area.dataset.bet;
     if (!betType || isRolling) return;
+    if (longPressFired) { longPressFired = false; return; } // long-press handled it
 
     var amount = parseInt(dom.betAmount.value, 10);
     if (!amount || amount <= 0) {
@@ -729,6 +774,15 @@
     dom.betAreas.forEach(function (area) {
       area.addEventListener('click', onBetAreaClick);
       area.addEventListener('keydown', onBetAreaKeydown);
+      // Long-press (hold) to toggle a standing bet working / off
+      area.addEventListener('mousedown', onPressStart);
+      area.addEventListener('mouseup', cancelPress);
+      area.addEventListener('mouseleave', cancelPress);
+      area.addEventListener('touchstart', onPressStart, { passive: true });
+      area.addEventListener('touchend', cancelPress);
+      area.addEventListener('touchmove', cancelPress, { passive: true });
+      area.addEventListener('touchcancel', cancelPress);
+      area.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     });
 
     dom.btnRoll.addEventListener('click', onRoll);
