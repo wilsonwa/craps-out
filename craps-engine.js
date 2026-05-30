@@ -507,6 +507,45 @@
   BetManager.prototype.clearType = function (betType) { this._bets.delete(betType); };
   BetManager.prototype.clearAll = function () { this._bets.clear(); };
 
+  // Remove the most recent matching wager of a type (for undo). Returns the
+  // removed bet object, or null if none matched.
+  BetManager.prototype.removeLast = function (betType, amount, point) {
+    var arr = this._bets.get(betType);
+    if (!arr || !arr.length) return null;
+    for (var i = arr.length - 1; i >= 0; i--) {
+      var match = arr[i].amount === amount &&
+        (arr[i].point == null ? point == null : arr[i].point === point);
+      if (match) {
+        var removed = arr.splice(i, 1)[0];
+        if (!arr.length) this._bets.delete(betType);
+        return removed;
+      }
+    }
+    // Fallback: drop the last entry of this type
+    var last = arr.pop();
+    if (!arr.length) this._bets.delete(betType);
+    return last;
+  };
+
+  // Remove every wager for which fn(type, bet) returns true. Returns the total
+  // refunded amount. Remaining wagers keep their flags (working/need).
+  BetManager.prototype.removeWhere = function (fn) {
+    var refund = 0;
+    var self = this;
+    var types = Array.from(this._bets.keys());
+    types.forEach(function (type) {
+      var arr = self._bets.get(type);
+      var keep = [];
+      arr.forEach(function (b) {
+        if (fn(type, b)) refund += b.amount;
+        else keep.push(b);
+      });
+      if (keep.length) self._bets.set(type, keep);
+      else self._bets.delete(type);
+    });
+    return refund;
+  };
+
   // Flip the working state of every wager of a type. Returns the new state
   // (true = working/on, false = not working/off), or null if no such bet.
   BetManager.prototype.toggleWorking = function (betType) {
@@ -594,18 +633,18 @@
   BetManager.prototype._resolvePass = function (sum, phase, point, wins, losses) {
     if (!this.has(BetType.PASS)) return;
     var bets = this._bets.get(BetType.PASS);
+    // Pass line is a standing bet: on a win we pay only the winnings and leave
+    // the original bet up for the next come-out. It comes down only on a loss.
     if (phase === Phase.COME_OUT) {
       if (NATURALS.indexOf(sum) !== -1) {
-        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[BetType.PASS]) }); });
-        this.clearType(BetType.PASS);
+        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[BetType.PASS]) }); });
       } else if (CRAPS_NUMBERS.indexOf(sum) !== -1) {
         bets.forEach(function (b) { losses.push({ betType: BetType.PASS, amount: b.amount }); });
         this.clearType(BetType.PASS);
       }
     } else {
       if (sum === point) {
-        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[BetType.PASS]) }); });
-        this.clearType(BetType.PASS);
+        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[BetType.PASS]) }); });
       } else if (sum === 7) {
         bets.forEach(function (b) { losses.push({ betType: BetType.PASS, amount: b.amount }); });
         this.clearType(BetType.PASS);
@@ -972,6 +1011,7 @@
     this._bets = new BetManager();
     this._state = new GameState({ balance: initialBalance });
     this._listeners = new Map();
+    this._betLog = []; // placements since the last roll, for undo
   }
 
   /**
@@ -1039,6 +1079,7 @@
       balance: this._state.balance - amount - commission,
       totalWagered: this._state.totalWagered + amount,
     });
+    this._betLog.push({ betType: betType, amount: amount, commission: commission, point: betPoint });
 
     this._emit(GameEvent.BET_PLACED, { betType: betType, amount: amount, point: betPoint });
 
@@ -1114,6 +1155,8 @@
       this._emit(GameEvent.PHASE_CHANGED, { from: prevPhase, to: newPhase, point: newPoint });
     }
 
+    this._betLog = []; // bets placed before this roll are now in play
+
     return { dice: dice, outcome: outcome, resolved: resolved };
   };
 
@@ -1140,6 +1183,47 @@
     this._state = this._state.update({ balance: this._state.balance + refund });
     this._emit('bet-removed', { betType: betType, refund: refund });
     return { success: true, refund: refund, message: 'Removed ' + betType + ' bet, refunded $' + refund + '.' };
+  };
+
+  /**
+   * Undo the most recently placed bet (since the last roll), refunding its
+   * amount and any commission.
+   * @returns {{success: boolean, refund: number, betType: string, message: string}}
+   */
+  CrapsGame.prototype.undoLastBet = function () {
+    if (!this._betLog.length) {
+      return { success: false, refund: 0, betType: null, message: 'Nothing to undo.' };
+    }
+    var last = this._betLog.pop();
+    var removed = this._bets.removeLast(last.betType, last.amount, last.point);
+    if (!removed) {
+      return { success: false, refund: 0, betType: null, message: 'Nothing to undo.' };
+    }
+    var refund = last.amount + (last.commission || 0);
+    this._state = this._state.update({ balance: this._state.balance + refund });
+    this._emit('bet-removed', { betType: last.betType, refund: refund });
+    return { success: true, refund: refund, betType: last.betType, message: 'Undid ' + last.betType + ', refunded $' + refund + '.' };
+  };
+
+  /**
+   * Clear every bet that is NOT locked in play and refund it. Locked (kept)
+   * bets are contract wagers riding on a point: pass / don't pass during the
+   * point phase, and come / don't come bets that have traveled to a number.
+   * @returns {{success: boolean, refund: number, message: string}}
+   */
+  CrapsGame.prototype.clearRemovableBets = function () {
+    var phase = this._state.phase;
+    var refund = this._bets.removeWhere(function (type, b) {
+      if ((type === 'pass' || type === 'dont-pass') && phase === Phase.POINT) return false;
+      if ((type === 'come' || type === 'dont-come') && b.point != null) return false;
+      return true; // removable
+    });
+    if (refund > 0) {
+      this._state = this._state.update({ balance: this._state.balance + refund });
+    }
+    this._betLog = [];
+    this._emit('bets-cleared', { refund: refund });
+    return { success: true, refund: refund, message: 'Cleared removable bets, refunded $' + refund + '.' };
   };
 
   /**
@@ -1172,6 +1256,7 @@
 
   CrapsGame.prototype.reset = function () {
     this._bets.clearAll();
+    this._betLog = [];
     this._state = new GameState({ balance: this._initialBalance });
     this._emit(GameEvent.GAME_RESET, {});
   };

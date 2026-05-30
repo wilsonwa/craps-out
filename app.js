@@ -24,6 +24,7 @@
     diceTotal: document.getElementById('dice-total-value'),
     diceRollHistory: document.getElementById('dice-roll-history'),
     btnRoll: document.getElementById('btn-roll'),
+    btnUndo: document.getElementById('btn-undo'),
     btnClear: document.getElementById('btn-clear-bets'),
     btnNewGame: document.getElementById('btn-new-game'),
     betAmount: document.getElementById('bet-amount'),
@@ -677,15 +678,24 @@
     render();
   }
 
-  function processRollResult(result) {
+  // Player net worth = cash balance + everything currently at risk on the felt.
+  // The roll's true result is the change in net worth, which is correct
+  // regardless of whether a winning bet was paid-and-removed or left standing.
+  function netWorth() {
+    var bets = game.getBets();
+    var atRisk = 0;
+    Object.keys(bets).forEach(function (k) {
+      bets[k].forEach(function (b) { atRisk += b.amount; });
+    });
+    return game.getBalance() + atRisk;
+  }
+
+  function processRollResult(result, nwBefore) {
     renderDice(result.dice.die1, result.dice.die2);
     addDiceHistoryChip(result.dice.die1, result.dice.die2, result.dice.sum);
 
     // Net dollar result of this roll, shown as a number next to the balance.
-    var net = 0;
-    result.resolved.wins.forEach(function (w) { net += w.payout - w.amount; });
-    result.resolved.losses.forEach(function (l) { net -= l.amount; });
-
+    var net = (typeof nwBefore === 'number') ? (netWorth() - nwBefore) : 0;
     if (net > 0) setMessage('+' + formatCurrency(net), 'success');
     else if (net < 0) setMessage('-' + formatCurrency(-net), 'error');
     else setMessage('–', 'info'); // no change
@@ -773,30 +783,34 @@
     var comePointsBefore = (bets.come || [])
       .filter(function (b) { return b.point != null; })
       .map(function (b) { return b.point; });
+    var nwBefore = netWorth();
 
     animateRoll(function () {
       var result = game.roll();
-      processRollResult(result);
+      processRollResult(result, nwBefore);
       maybePromptOdds(result, comePointsBefore);
     });
   }
 
+  function onUndo() {
+    if (isRolling) return;
+    var res = game.undoLastBet();
+    setMessage(
+      res.success ? 'Undid last bet, ' + formatCurrency(res.refund) + ' returned.' : res.message,
+      res.success ? 'info' : 'error'
+    );
+    render();
+  }
+
   function onClearBets() {
     if (isRolling) return;
-
-    var bets = game.getBets();
-    var refund = 0;
-    Object.keys(bets).forEach(function (type) {
-      bets[type].forEach(function (b) { refund += b.amount; });
-    });
-
-    if (refund > 0) {
-      game._bets.clearAll();
-      game._state = game._state.update({ balance: game._state.balance + refund });
-      setMessage('All bets cleared. ' + formatCurrency(refund) + ' returned.', 'info');
+    var res = game.clearRemovableBets();
+    if (res.refund > 0) {
+      setMessage('Cleared bets, ' + formatCurrency(res.refund) + ' returned.', 'info');
     } else {
-      setMessage('No bets to clear.', 'info');
+      setMessage('No removable bets — in-play bets stay.', 'info');
     }
+    closeOddsPopup();
     render();
   }
 
@@ -862,6 +876,7 @@
     });
 
     dom.btnRoll.addEventListener('click', onRoll);
+    if (dom.btnUndo) dom.btnUndo.addEventListener('click', onUndo);
     dom.btnClear.addEventListener('click', onClearBets);
     dom.btnNewGame.addEventListener('click', onNewGame);
 
