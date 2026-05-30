@@ -90,6 +90,7 @@
     'hard-6': 'Hard 6',
     'hard-8': 'Hard 8',
     'hard-10': 'Hard 10',
+    'horn': 'Horn',
     'horn-2': 'Horn 2',
     'horn-3': 'Horn 3',
     'horn-11': 'Horn 11',
@@ -104,6 +105,9 @@
     'split-horn3-horn11': 'Split 3/11',
     'split-horn11-horn12': 'Split 11/12',
   };
+
+  // Horn = one wager split equally across 2 / 3 / 11 / 12 (one-roll).
+  var HORN_GROUP = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
 
   // Split bet mapping: each split bet maps to two underlying prop bet types
   var SPLIT_BET_MAP = {
@@ -312,16 +316,22 @@
     });
   }
 
-  function renderAtsProgress(bets) {
-    var map = { small: SMALL_NUMBERS, tall: TALL_NUMBERS, all: ALL_NUMBERS };
-    Object.keys(map).forEach(function (t) {
-      var el = document.getElementById('ats-progress-' + t);
-      if (!el) return;
+  // Light up each bonus number as it is collected (before a 7). When no bet is
+  // active the numbers show neutral.
+  function renderAtsHits(bets) {
+    ['small', 'tall', 'all'].forEach(function (t) {
+      var container = document.getElementById('ats-nums-' + t);
+      if (!container) return;
       var arr = bets[t];
-      if (!arr || !arr.length) { el.textContent = ''; return; }
-      var total = map[t].length;
-      var need = arr[0].need ? arr[0].need.length : total;
-      el.textContent = (total - need) + '/' + total;
+      var active = !!(arr && arr.length);
+      var need = active && arr[0].need ? arr[0].need : null;
+      var btn = container.closest('.ats-bet');
+      if (btn) btn.classList.toggle('ats-active', active);
+      container.querySelectorAll('.ats-n').forEach(function (sp) {
+        var num = parseInt(sp.dataset.num, 10);
+        var hit = active && need && need.indexOf(num) === -1;
+        sp.classList.toggle('hit', hit);
+      });
     });
   }
 
@@ -345,7 +355,15 @@
     renderTravelingChips(bets['dont-come'], 'chips-dont-come', 'chips-dc-pt-', 'dc-chip');
     // Come odds sit in the same box as their come point, with a cyan ring
     renderTravelingChips(bets['come-odds'], null, 'chips-come-pt-', 'odds-chip');
-    renderAtsProgress(bets);
+
+    // Horn is a board shortcut for 4 separate horn bets — show the combined total
+    var hornTotal = 0;
+    HORN_GROUP.forEach(function (p) {
+      (bets[p] || []).forEach(function (b) { hornTotal += b.amount; });
+    });
+    appendChip(document.getElementById('chips-horn'), hornTotal);
+
+    renderAtsHits(bets);
 
     Object.keys(SPLIT_BET_MAP).forEach(function (splitKey) {
       var parts = SPLIT_BET_MAP[splitKey];
@@ -641,6 +659,23 @@
     var amount = parseInt(dom.betAmount.value, 10);
     if (!amount || amount <= 0) {
       setMessage('Enter a valid bet amount.', 'error');
+      return;
+    }
+
+    // Horn: split the wager equally across 2 / 3 / 11 / 12
+    if (betType === 'horn') {
+      var per = Math.floor(amount / 4);
+      if (per <= 0) {
+        setMessage('Horn bet needs at least $4 (split 4 ways).', 'error');
+        return;
+      }
+      if (per * 4 > game.getBalance()) {
+        setMessage('Insufficient balance for that horn bet.', 'error');
+        return;
+      }
+      HORN_GROUP.forEach(function (p) { game.placeBet(p, per); });
+      setMessage('Horn placed: $' + per + ' each on 2 / 3 / 11 / 12.', 'success');
+      render();
       return;
     }
 

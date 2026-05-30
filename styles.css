@@ -569,48 +569,69 @@ body {
 }
 
 .ats-title {
-  font-size: 0.8rem;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--gold-light);
 }
 
-.ats-nums {
+.ats-pay {
   font-size: 0.55rem;
-  color: #cfe8d6;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.ats-bet .payout-label {
-  font-size: 0.6rem;
   font-weight: 700;
   color: var(--felt-border);
 }
 
-.ats-progress {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #fff;
-  min-height: 0.7rem;
-}
-
-.ats-progress:not(:empty) {
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 6px;
-  padding: 0 5px;
-}
-
-/* ===== ROW 2: COME area ===== */
-.come-area {
+.ats-nums {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+}
+
+/* Each bonus number; lights up once collected before a 7 */
+.ats-n {
+  min-width: 13px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #88a394;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.ats-active .ats-n {
+  color: #e8f0ea;
+}
+
+.ats-n.hit {
+  color: #0d2a16;
+  background: var(--gold-light);
+  box-shadow: 0 0 6px rgba(240, 208, 128, 0.7);
+}
+
+/* ===== ROW 2: COME area — the dice rest here ===== */
+.come-area {
+  position: relative;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  min-height: 72px;
+  gap: 1.1rem;
+  min-height: 92px;
   border-bottom: 2px solid var(--felt-border);
-  background: var(--felt-light);
+  background:
+    radial-gradient(ellipse 60% 80% at 60% 50%, rgba(0, 0, 0, 0.22), transparent 70%),
+    var(--felt-light);
+}
+
+.come-area #chips-come {
+  position: absolute;
+  bottom: 4px;
+  right: 10px;
 }
 
 /* Casino-style small payout notes printed on the felt bands */
@@ -622,41 +643,31 @@ body {
   text-transform: uppercase;
 }
 
-.come-area .band-payout {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-/* ===== DICE ON THE BOARD ===== */
-.table-center {
+/* Dice sit inside the COME band; clicks still place a come bet */
+.dice-on-come {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  padding: 0.6rem;
-  min-height: 86px;
-  background:
-    radial-gradient(ellipse at center, rgba(0, 0, 0, 0.28), transparent 70%),
-    var(--felt-green);
-  border-bottom: 2px solid var(--felt-border);
+  gap: 0.8rem;
+  pointer-events: none;
 }
 
-.table-center .dice-total {
+.dice-on-come .dice-total {
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 
-.table-center .dice-total span:first-child {
-  font-size: 0.6rem;
+.dice-on-come .dice-total span:first-child {
+  font-size: 0.55rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
 }
 
-.table-center #dice-total-value {
-  font-size: 1.7rem;
+.dice-on-come #dice-total-value {
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--gold-light);
 }
@@ -681,91 +692,103 @@ body {
 
 .come-label {
   color: #cc0000;
-  font-size: 2.4rem;
+  font-size: 2rem;
   font-weight: 700;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
 }
 
-/* ===== ROW 3: FIELD area ===== */
+/* ===== ROW 3: FIELD — single skinny one-roll bet ===== */
 .field-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 48px;
   border-bottom: 2px solid var(--felt-border);
+  background: var(--felt-green);
 }
 
-/* Three-section field row */
-.field-row {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  min-height: 65px;
-}
-
-.field-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.5rem;
-  gap: 0.15rem;
-  min-height: 65px;
-}
-
-.field-left,
-.field-right {
-  flex: 0 0 auto;
-  width: 22%;
-  border-right: 1px solid var(--felt-border);
-}
-
-.field-right {
-  border-right: none;
-  border-left: 1px solid var(--felt-border);
-}
-
-.field-center {
-  flex: 1;
-}
-
-.field-nums {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.2rem;
-}
-
-.field-number {
-  color: white;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.field-special {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: white;
-  color: var(--text-dark);
-  font-size: 0.9rem;
-  font-weight: 700;
-  border: 2px solid #555;
+.field-area #chips-field {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .field-title {
   color: var(--felt-border);
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
 }
 
-.field-payout {
+.field-line {
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.field-note {
   color: var(--felt-border);
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   font-weight: 600;
-  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ===== HORN bet (one-roll, 2/3/11/12) ===== */
+.horn-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 38px;
+  border-bottom: 2px solid var(--felt-border);
+  background: var(--felt-dark);
+}
+
+.horn-area #chips-horn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.horn-title {
+  color: var(--gold-light);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.horn-nums {
+  display: flex;
+  gap: 4px;
+}
+
+.horn-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.horn-note {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
 }
 
 /* ===== ROW 4: Don't Pass Bar ===== */

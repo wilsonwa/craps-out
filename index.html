@@ -33,7 +33,33 @@
       <div class="craps-table">
         <div class="table-felt">
 
-          <!-- ROW 1: Don't Come Bar + Number Boxes (4,5,SIX,8,NINE,10) + Big 6/8 -->
+          <!-- BONUS ROW (top): All Small / All / All Tall — come-out roll only.
+               Each number lights up as it is collected before a 7. -->
+          <div class="ats-row" aria-label="Bonus bets">
+            <button class="bet-area ats-bet ats-small" data-bet="small" aria-label="All Small 2 3 4 5 6">
+              <span class="ats-title">SMALL <span class="ats-pay">30:1</span></span>
+              <span class="ats-nums" id="ats-nums-small">
+                <span class="ats-n" data-num="2">2</span><span class="ats-n" data-num="3">3</span><span class="ats-n" data-num="4">4</span><span class="ats-n" data-num="5">5</span><span class="ats-n" data-num="6">6</span>
+              </span>
+              <div class="chip-stack" id="chips-small"></div>
+            </button>
+            <button class="bet-area ats-bet ats-all" data-bet="all" aria-label="All numbers">
+              <span class="ats-title">ALL <span class="ats-pay">150:1</span></span>
+              <span class="ats-nums" id="ats-nums-all">
+                <span class="ats-n" data-num="2">2</span><span class="ats-n" data-num="3">3</span><span class="ats-n" data-num="4">4</span><span class="ats-n" data-num="5">5</span><span class="ats-n" data-num="6">6</span><span class="ats-n" data-num="8">8</span><span class="ats-n" data-num="9">9</span><span class="ats-n" data-num="10">10</span><span class="ats-n" data-num="11">11</span><span class="ats-n" data-num="12">12</span>
+              </span>
+              <div class="chip-stack" id="chips-all"></div>
+            </button>
+            <button class="bet-area ats-bet ats-tall" data-bet="tall" aria-label="All Tall 8 9 10 11 12">
+              <span class="ats-title">TALL <span class="ats-pay">30:1</span></span>
+              <span class="ats-nums" id="ats-nums-tall">
+                <span class="ats-n" data-num="8">8</span><span class="ats-n" data-num="9">9</span><span class="ats-n" data-num="10">10</span><span class="ats-n" data-num="11">11</span><span class="ats-n" data-num="12">12</span>
+              </span>
+              <div class="chip-stack" id="chips-tall"></div>
+            </button>
+          </div>
+
+          <!-- ROW 1: Don't Come Bar + Number Boxes (4,5,6,8,9,10) + Big 6/8 -->
           <div class="table-top-row">
             <button class="bet-area dont-come-bar" data-bet="dont-come" aria-label="Don't Come">
               <span class="bet-label">Don't<br>Come<br>Bar</span>
@@ -89,7 +115,7 @@
                   <div class="chip-stack" id="chips-lay-6"></div>
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-6" aria-label="Place 6">
-                  <span class="number-label">SIX</span>
+                  <span class="number-label">6</span>
                   <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-6"></div>
                 </button>
@@ -108,7 +134,7 @@
                   <div class="chip-stack" id="chips-lay-8"></div>
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-8" aria-label="Place 8">
-                  <span class="number-label">EIGHT</span>
+                  <span class="number-label">8</span>
                   <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-8"></div>
                 </button>
@@ -127,7 +153,7 @@
                   <div class="chip-stack" id="chips-lay-9"></div>
                 </button>
                 <button class="bet-area number-bet-place" data-bet="place-9" aria-label="Place 9">
-                  <span class="number-label">NINE</span>
+                  <span class="number-label">9</span>
                   <span class="place-odds">7:5</span>
                   <div class="chip-stack" id="chips-place-9"></div>
                 </button>
@@ -169,93 +195,54 @@
             </div>
           </div>
 
-          <!-- BONUS ROW: All Small / All Tall / All (ATS) — come-out roll only -->
-          <div class="ats-row" aria-label="Bonus bets">
-            <button class="bet-area ats-bet ats-small" data-bet="small" aria-label="All Small 2 3 4 5 6">
-              <span class="ats-title">SMALL</span>
-              <span class="ats-nums">2 3 4 5 6</span>
-              <span class="ats-progress" id="ats-progress-small"></span>
-              <span class="payout-label">30:1</span>
-              <div class="chip-stack" id="chips-small"></div>
-            </button>
-            <button class="bet-area ats-bet ats-all" data-bet="all" aria-label="All numbers">
-              <span class="ats-title">ALL</span>
-              <span class="ats-nums">make 'em all</span>
-              <span class="ats-progress" id="ats-progress-all"></span>
-              <span class="payout-label">150:1</span>
-              <div class="chip-stack" id="chips-all"></div>
-            </button>
-            <button class="bet-area ats-bet ats-tall" data-bet="tall" aria-label="All Tall 8 9 10 11 12">
-              <span class="ats-title">TALL</span>
-              <span class="ats-nums">8 9 10 11 12</span>
-              <span class="ats-progress" id="ats-progress-tall"></span>
-              <span class="payout-label">30:1</span>
-              <div class="chip-stack" id="chips-tall"></div>
-            </button>
-          </div>
-
-          <!-- ROW 2: COME area -->
+          <!-- ROW 2: COME area — the dice rest here -->
           <button class="bet-area come-area" data-bet="come" aria-label="Come">
             <span class="come-label">COME</span>
-            <span class="band-payout">wins 7 / 11 &bull; travels to box on point</span>
+            <div class="dice-on-come" aria-label="Dice">
+              <div class="dice-container">
+                <div class="die" id="die-1" aria-label="Die 1">
+                  <div class="die-face" data-value="1">
+                    <span class="dot top-left"></span>
+                    <span class="dot top-right"></span>
+                    <span class="dot mid-left"></span>
+                    <span class="dot center"></span>
+                    <span class="dot mid-right"></span>
+                    <span class="dot bottom-left"></span>
+                    <span class="dot bottom-right"></span>
+                  </div>
+                </div>
+                <div class="die" id="die-2" aria-label="Die 2">
+                  <div class="die-face" data-value="1">
+                    <span class="dot top-left"></span>
+                    <span class="dot top-right"></span>
+                    <span class="dot mid-left"></span>
+                    <span class="dot center"></span>
+                    <span class="dot mid-right"></span>
+                    <span class="dot bottom-left"></span>
+                    <span class="dot bottom-right"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="dice-total"><span>Total</span><span id="dice-total-value">&ndash;</span></div>
+            </div>
             <div class="chip-stack" id="chips-come"></div>
           </button>
 
-          <!-- DICE ON BOARD -->
-          <div class="table-center" aria-label="Dice">
-            <div class="dice-container">
-              <div class="die" id="die-1" aria-label="Die 1">
-                <div class="die-face" data-value="1">
-                  <span class="dot top-left"></span>
-                  <span class="dot top-right"></span>
-                  <span class="dot mid-left"></span>
-                  <span class="dot center"></span>
-                  <span class="dot mid-right"></span>
-                  <span class="dot bottom-left"></span>
-                  <span class="dot bottom-right"></span>
-                </div>
-              </div>
-              <div class="die" id="die-2" aria-label="Die 2">
-                <div class="die-face" data-value="1">
-                  <span class="dot top-left"></span>
-                  <span class="dot top-right"></span>
-                  <span class="dot mid-left"></span>
-                  <span class="dot center"></span>
-                  <span class="dot mid-right"></span>
-                  <span class="dot bottom-left"></span>
-                  <span class="dot bottom-right"></span>
-                </div>
-              </div>
-            </div>
-            <div class="dice-total">
-              <span>Total</span>
-              <span id="dice-total-value">&ndash;</span>
-            </div>
-          </div>
+          <!-- ROW 3: FIELD — single skinny one-roll bet -->
+          <button class="bet-area field-area" data-bet="field" aria-label="Field 2 3 4 9 10 11 12">
+            <span class="field-title">FIELD</span>
+            <span class="field-line">2 3 4 &bull; 9 10 11 12</span>
+            <span class="field-note">2 &amp; 12 pay double</span>
+            <div class="chip-stack" id="chips-field"></div>
+          </button>
 
-          <!-- ROW 3: FIELD area — 3 sections, all place the same field bet -->
-          <div class="field-area field-row">
-            <button class="bet-area field-section field-left" data-bet="field" aria-label="Field 2 3 4">
-              <div class="field-nums">
-                <span class="field-number field-special">2</span>
-                <span class="field-number">3</span>
-                <span class="field-number">4</span>
-              </div>
-            </button>
-            <button class="bet-area field-section field-center" data-bet="field" aria-label="Field">
-              <span class="field-title">FIELD</span>
-              <div class="field-payout">2 pays 2:1 &bull; 12 pays 3:1</div>
-              <div class="chip-stack" id="chips-field"></div>
-            </button>
-            <button class="bet-area field-section field-right" data-bet="field" aria-label="Field 9 10 11 12">
-              <div class="field-nums">
-                <span class="field-number">9</span>
-                <span class="field-number">10</span>
-                <span class="field-number">11</span>
-                <span class="field-number field-special">12</span>
-              </div>
-            </button>
-          </div>
+          <!-- HORN bet — one-roll, splits across 2 / 3 / 11 / 12 -->
+          <button class="bet-area horn-area" data-bet="horn" aria-label="Horn 2 3 11 12">
+            <span class="horn-title">HORN</span>
+            <span class="horn-nums"><span class="horn-n">2</span><span class="horn-n">3</span><span class="horn-n">11</span><span class="horn-n">12</span></span>
+            <span class="horn-note">2/12 30:1 &bull; 3/11 15:1</span>
+            <div class="chip-stack" id="chips-horn"></div>
+          </button>
 
           <!-- ROW 4: Don't Pass Bar -->
           <button class="bet-area dont-pass-area" data-bet="dont-pass" aria-label="Don't Pass">
