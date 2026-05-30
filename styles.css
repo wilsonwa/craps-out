@@ -593,11 +593,12 @@ body {
 
 /* Each bonus number; lights up once collected before a 7 */
 .ats-n {
-  min-width: 13px;
+  min-width: 15px;
+  padding: 0 2px;
   text-align: center;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.35;
   color: #88a394;
   border-radius: 3px;
   transition: all 0.2s;
@@ -610,7 +611,8 @@ body {
 .ats-n.hit {
   color: #0d2a16;
   background: var(--gold-light);
-  box-shadow: 0 0 6px rgba(240, 208, 128, 0.7);
+  box-shadow: 0 0 7px rgba(240, 208, 128, 0.85);
+  transform: scale(1.08);
 }
 
 /* ===== ROW 2: COME area — the dice rest here ===== */
@@ -2026,20 +2028,6 @@ body {
     font-size: 0.6rem;
   }
 
-  .field-section {
-    min-height: 60px;
-  }
-
-  .field-number {
-    font-size: 0.9rem;
-  }
-
-  .field-special {
-    width: 22px;
-    height: 22px;
-    font-size: 0.75rem;
-  }
-
   .big-bets {
     width: 50px;
   }
@@ -2153,31 +2141,12 @@ body {
     min-height: 44px;
   }
 
-  .field-row {
-    min-height: 56px;
-  }
-
-  .field-section {
-    min-height: 56px;
-    padding: 0.25rem 0.3rem;
-  }
-
-  .field-number {
-    font-size: 0.8rem;
-  }
-
-  .field-special {
-    width: 20px;
-    height: 20px;
-    font-size: 0.68rem;
-  }
-
   .field-title {
     font-size: 1rem;
   }
 
-  .field-payout {
-    font-size: 0.55rem;
+  .field-line {
+    font-size: 0.78rem;
   }
 
   .big-bets {
@@ -2268,6 +2237,13 @@ body {
     gap: 0.4rem;
   }
 
+  /* The prop sidebar is taller than the felt; don't let it stretch the
+     felt bands. Top-align so the board collapses to its compact height
+     and is fully visible, with the sidebar extending below. */
+  .table-layout {
+    align-items: flex-start;
+  }
+
   /* --- Compact sticky bottom controls --- */
   .controls {
     flex-direction: row;
@@ -2304,37 +2280,92 @@ body {
 
   /* --- Shrink the felt bands so more of the board shows --- */
   .dont-come-bar {
-    min-height: 56px;
-  }
-  .number-box .number-bet-place {
-    min-height: 38px;
-  }
-  .ats-row .ats-bet {
-    min-height: 38px;
-  }
-  .come-area {
     min-height: 48px;
   }
-  .table-center {
-    min-height: 58px;
-    padding: 0.35rem;
-    gap: 0.8rem;
-  }
-  .field-row,
-  .field-section {
-    min-height: 46px;
-  }
-  .dont-pass-area {
+  .number-box .number-bet-place {
     min-height: 30px;
   }
+  .number-bet-lay {
+    height: 15px;
+  }
+  .lay-label {
+    font-size: 0.46rem;
+  }
+  .number-bet-buy {
+    height: 16px;
+  }
+  .buy-label {
+    font-size: 0.46rem;
+  }
+
+  /* Bonus row: keep the ALL row's 10 numbers on a single line */
+  .ats-row .ats-bet {
+    min-height: 40px;
+    padding: 0.2rem 0.15rem;
+  }
+  .ats-nums {
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+  .ats-title {
+    font-size: 0.7rem;
+  }
+  .ats-n {
+    font-size: 0.58rem;
+    min-width: 11px;
+    line-height: 1.15;
+  }
+
+  /* COME band holds the dice — keep it tight */
+  .come-area {
+    min-height: 46px;
+    gap: 0.7rem;
+  }
+  .come-label {
+    font-size: 1.5rem;
+  }
+  .dice-on-come {
+    gap: 0.5rem;
+  }
+  .dice-on-come #dice-total-value {
+    font-size: 1.15rem;
+  }
+
+  .field-area {
+    min-height: 34px;
+  }
+  .field-title {
+    font-size: 0.85rem;
+  }
+  .field-line {
+    font-size: 0.74rem;
+  }
+
+  .horn-area {
+    min-height: 32px;
+  }
+
+  .dont-pass-area {
+    min-height: 26px;
+    gap: 0;
+  }
+
+  .pass-line-row .pass-area,
   .pass-area {
-    min-height: 44px;
+    min-height: 40px;
+  }
+  .pass-label {
+    font-size: 1.25rem;
+  }
+
+  .dice-history-bar {
+    padding: 0.2rem 0.5rem;
   }
 
   /* --- Smaller dice --- */
   .die {
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
   }
 }
 
