@@ -1145,6 +1145,23 @@
       }
     }
 
+    // When a point is established, a Place/Buy bet already sitting on that
+    // number is returned to the player (you don't place the point you're on).
+    var returned = [];
+    if (outcome === Outcome.POINT_SET && newPoint != null) {
+      var manager = this._bets;
+      ['place-' + newPoint, 'buy-' + newPoint].forEach(function (t) {
+        var arr = manager.getAll()[t];
+        if (arr && arr.length) {
+          var amt = 0;
+          arr.forEach(function (b) { amt += b.amount; });
+          returned.push({ betType: t, amount: amt });
+          balanceDelta += amt;
+          manager.clearType(t);
+        }
+      });
+    }
+
     this._state = this._state.update({
       phase: newPhase, point: newPoint,
       balance: this._state.balance + balanceDelta,
@@ -1169,7 +1186,7 @@
     if (roundSnapshot.length) this._lastRoundBets = roundSnapshot;
     this._betLog = []; // bets placed before this roll are now in play
 
-    return { dice: dice, outcome: outcome, resolved: resolved };
+    return { dice: dice, outcome: outcome, resolved: resolved, returned: returned };
   };
 
   CrapsGame.prototype.getGameState = function () { return this._state.toJSON(); };

@@ -1731,6 +1731,35 @@ body {
   pointer-events: none;
 }
 
+/* A bet area holding a returnable chip: let touch drag it instead of scrolling */
+.bet-area.has-draggable {
+  touch-action: none;
+  cursor: grab;
+}
+
+/* The floating chip that follows the pointer while dragging */
+.drag-ghost {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 500;
+  opacity: 0.92;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+body.dragging-chip {
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Highlight the controls as the "return" drop zone during a drag */
+body.dragging-chip .controls {
+  outline: 2px dashed var(--gold);
+  outline-offset: -4px;
+  background: linear-gradient(135deg, #2f2f52, #262648);
+}
+
 .chip {
   width: 34px;
   height: 34px;

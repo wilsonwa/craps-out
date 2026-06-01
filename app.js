@@ -220,6 +220,7 @@
     renderPointMarkers();
     renderBets();
     renderChipStacks();
+    updateDraggableAreas();
     dom.btnRoll.disabled = isRolling;
   }
 
@@ -656,10 +657,141 @@
     clearTimeout(pressTimer);
   }
 
+  // ---- Drag a placed chip: drop on the controls to take it down (return),
+  //      or onto another bet spot to move it. Pointer events (touch + mouse). ----
+  var DRAG_THRESHOLD = 8;
+  var drag = null;
+  var dragHappened = false;
+
+  // Bets that can be picked up / moved (non-contract). Excludes pass/come/
+  // dont-pass/dont-come line bets and the point-box come chips.
+  function isReturnable(type) {
+    return /^(place|buy|lay)-\d+$/.test(type) ||
+      /^big-(6|8)$/.test(type) ||
+      /^hard-\d+$/.test(type) ||
+      /^horn-\d+$/.test(type) ||
+      type === 'horn' || type === 'field' ||
+      type === 'any-seven' || type === 'any-craps' ||
+      type === 'small' || type === 'tall' || type === 'all' ||
+      type === 'pass-odds' || type === 'put';
+  }
+
+  // Valid engine bet types you can move a chip onto.
+  function isMoveTarget(type) {
+    return /^(place|buy|lay)-\d+$/.test(type) ||
+      /^big-(6|8)$/.test(type) ||
+      /^hard-\d+$/.test(type) ||
+      /^horn-\d+$/.test(type) ||
+      type === 'field' || type === 'any-seven' || type === 'any-craps';
+  }
+
+  // Mark bet areas that hold a returnable bet so touch can drag them
+  // (touch-action: none) while empty areas keep normal page scrolling.
+  function updateDraggableAreas() {
+    document.querySelectorAll('.bet-area[data-bet]').forEach(function (area) {
+      var type = area.dataset.bet;
+      area.classList.toggle('has-draggable', isReturnable(type) && typeTotal(type) > 0);
+    });
+  }
+
+  function typeTotal(type) {
+    var bets = game.getBets();
+    var sum = 0;
+    if (type === 'horn') {
+      HORN_GROUP.forEach(function (p) { (bets[p] || []).forEach(function (b) { sum += b.amount; }); });
+    } else {
+      (bets[type] || []).forEach(function (b) { sum += b.amount; });
+    }
+    return sum;
+  }
+
+  function takeDownType(type) {
+    var refund = 0;
+    if (type === 'horn') {
+      HORN_GROUP.forEach(function (p) { var r = game.removeBet(p); if (r.success) refund += r.refund; });
+    } else {
+      var r = game.removeBet(type);
+      if (r.success) refund = r.refund;
+    }
+    return refund;
+  }
+
+  function onChipPointerDown(e) {
+    if (isRolling || e.button === 2) return;
+    var area = e.target.closest ? e.target.closest('.bet-area[data-bet]') : null;
+    if (!area) return;
+    var type = area.dataset.bet;
+    if (!isReturnable(type) || typeTotal(type) <= 0) return; // nothing to drag here
+    drag = { type: type, amount: typeTotal(type), startX: e.clientX, startY: e.clientY, clone: null, active: false };
+    document.addEventListener('pointermove', onChipPointerMove, { passive: false });
+    document.addEventListener('pointerup', onChipPointerUp);
+    document.addEventListener('pointercancel', onChipPointerUp);
+  }
+
+  function onChipPointerMove(e) {
+    if (!drag) return;
+    if (!drag.active) {
+      if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD &&
+          Math.abs(e.clientY - drag.startY) < DRAG_THRESHOLD) return;
+      drag.active = true;
+      cancelPress(); // kill any pending long-press
+      var c = document.createElement('div');
+      c.className = 'chip ' + getChipClass(drag.amount) + ' drag-ghost';
+      c.textContent = formatChipLabel(drag.amount);
+      document.body.appendChild(c);
+      drag.clone = c;
+      document.body.classList.add('dragging-chip');
+    }
+    e.preventDefault();
+    drag.clone.style.left = e.clientX + 'px';
+    drag.clone.style.top = e.clientY + 'px';
+  }
+
+  function onChipPointerUp(e) {
+    document.removeEventListener('pointermove', onChipPointerMove);
+    document.removeEventListener('pointerup', onChipPointerUp);
+    document.removeEventListener('pointercancel', onChipPointerUp);
+    var d = drag;
+    drag = null;
+    document.body.classList.remove('dragging-chip');
+    if (!d) return;
+    if (d.clone) d.clone.remove();
+    if (!d.active) return; // never moved — treat as a normal tap
+
+    dragHappened = true; // suppress the click that follows on the source bet area
+
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var sourceName = formatBetName(d.type);
+
+    // Dropped on the controls bar → take the bet down and return the chips
+    if (el && el.closest('.controls')) {
+      var refund = takeDownType(d.type);
+      setMessage(sourceName + ' taken down, ' + formatCurrency(refund) + ' returned.', 'info');
+      render();
+      return;
+    }
+
+    // Dropped on another bet spot → move it there
+    var area = el && el.closest('.bet-area[data-bet]');
+    var target = area ? area.dataset.bet : null;
+    if (target && target !== d.type && isMoveTarget(target)) {
+      var amt = d.amount;
+      takeDownType(d.type);
+      var res = game.placeBet(target, amt);
+      if (res.success) setMessage(sourceName + ' moved to ' + formatBetName(target) + '.', 'success');
+      else setMessage(res.message + ' — ' + sourceName + ' returned.', 'info');
+      render();
+      return;
+    }
+
+    render(); // dropped nowhere useful — leave the bet as-is
+  }
+
   function onBetAreaClick(e) {
     var area = e.currentTarget;
     var betType = area.dataset.bet;
     if (!betType || isRolling) return;
+    if (dragHappened) { dragHappened = false; return; } // a drag handled it
     if (longPressFired) { longPressFired = false; return; } // long-press handled it
 
     var amount = parseInt(dom.betAmount.value, 10);
@@ -740,6 +872,12 @@
     if (net > 0) setMessage('+' + formatCurrency(net), 'success');
     else if (net < 0) setMessage('-' + formatCurrency(-net), 'error');
     else setMessage('–', 'info'); // no change
+
+    // A Place/Buy bet sitting on the new point was returned to the player.
+    if (result.returned && result.returned.length) {
+      var names = result.returned.map(function (r) { return formatBetName(r.betType); });
+      setMessage(names.join(', ') + ' returned', 'info');
+    }
 
     addHistoryItem(result.dice, result.outcome);
     addBettingHistoryEntry(game.getGameState().totalRolls, result.dice, result.resolved);
@@ -934,6 +1072,10 @@
     });
 
     dom.betAmount.addEventListener('input', onBetAmountChange);
+
+    // Drag a placed chip to take it down / move it (delegated; chips re-render)
+    var tableLayout = document.querySelector('.table-layout');
+    if (tableLayout) tableLayout.addEventListener('pointerdown', onChipPointerDown);
 
     // Take-odds popup
     if (dom.oddsOpt1x) dom.oddsOpt1x.addEventListener('click', function () { applyOdds(1); });
