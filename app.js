@@ -458,6 +458,12 @@
       : 'var(--text-light)';
   }
 
+  // Winnings (profit) of a resolved win. Standing bets (pass/big/buy/hardway)
+  // carry an explicit `profit`; bets that return the stake report it via payout.
+  function winProfit(w) {
+    return (w.profit != null) ? w.profit : (w.payout - w.amount);
+  }
+
   function addBettingHistoryEntry(rollNum, dice, resolved) {
     if (resolved.wins.length === 0 && resolved.losses.length === 0 && resolved.pushes.length === 0) {
       return;
@@ -468,8 +474,7 @@
 
     var parts = [];
     resolved.wins.forEach(function (w) {
-      var profit = w.payout - w.amount;
-      parts.push(formatBetName(w.betType) + ' +' + formatCurrency(profit));
+      parts.push(formatBetName(w.betType) + ' +' + formatCurrency(winProfit(w)));
     });
     resolved.losses.forEach(function (l) {
       parts.push(formatBetName(l.betType) + ' -' + formatCurrency(l.amount));
@@ -479,7 +484,7 @@
     });
 
     var netWins = 0;
-    resolved.wins.forEach(function (w) { netWins += w.payout - w.amount; });
+    resolved.wins.forEach(function (w) { netWins += winProfit(w); });
     resolved.losses.forEach(function (l) { netWins -= l.amount; });
 
     var item = document.createElement('div');
@@ -545,8 +550,7 @@
     resolved.wins.forEach(function (w) {
       var container = getFlashContainer(w.betType);
       applyFlash(container, 'flash-field-win');
-      var profit = w.payout - w.amount;
-      createFlyingChip(w.betType, profit, true);
+      createFlyingChip(w.betType, winProfit(w), true);
     });
     resolved.losses.forEach(function (l) {
       var container = getFlashContainer(l.betType);
@@ -559,7 +563,7 @@
     var winTotals = {}, lossTotals = {}, pushTypes = {};
 
     resolved.wins.forEach(function(w) {
-      winTotals[w.betType] = (winTotals[w.betType] || 0) + (w.payout - w.amount);
+      winTotals[w.betType] = (winTotals[w.betType] || 0) + winProfit(w);
     });
     resolved.losses.forEach(function(l) {
       lossTotals[l.betType] = (lossTotals[l.betType] || 0) + l.amount;

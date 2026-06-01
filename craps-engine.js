@@ -637,14 +637,14 @@
     // the original bet up for the next come-out. It comes down only on a loss.
     if (phase === Phase.COME_OUT) {
       if (NATURALS.indexOf(sum) !== -1) {
-        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[BetType.PASS]) }); });
+        bets.forEach(function (b) { var p = calcProfit(b.amount, PayoutTable[BetType.PASS]); wins.push({ betType: BetType.PASS, amount: b.amount, payout: p, profit: p }); });
       } else if (CRAPS_NUMBERS.indexOf(sum) !== -1) {
         bets.forEach(function (b) { losses.push({ betType: BetType.PASS, amount: b.amount }); });
         this.clearType(BetType.PASS);
       }
     } else {
       if (sum === point) {
-        bets.forEach(function (b) { wins.push({ betType: BetType.PASS, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[BetType.PASS]) }); });
+        bets.forEach(function (b) { var p = calcProfit(b.amount, PayoutTable[BetType.PASS]); wins.push({ betType: BetType.PASS, amount: b.amount, payout: p, profit: p }); });
       } else if (sum === 7) {
         bets.forEach(function (b) { losses.push({ betType: BetType.PASS, amount: b.amount }); });
         this.clearType(BetType.PASS);
@@ -823,7 +823,7 @@
     this._bets.get(betType).forEach(function (b) {
       if (b.working === false) { remaining.push(b); return; }
       if (sum === bigNum) {
-        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]), profit: calcProfit(b.amount, PayoutTable[betType]) });
         remaining.push(b); // big bet stays up after a win
       } else if (sum === 7) {
         losses.push({ betType: betType, amount: b.amount });
@@ -866,7 +866,7 @@
     this._bets.get(betType).forEach(function (b) {
       if (b.working === false) { remaining.push(b); return; }
       if (isHard) {
-        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]), profit: calcProfit(b.amount, PayoutTable[betType]) });
         remaining.push(b); // hardway stays up after a win
       } else if (isEasy || isSeven) {
         losses.push({ betType: betType, amount: b.amount });
@@ -896,7 +896,7 @@
     this._bets.get(betType).forEach(function (b) {
       if (b.working === false) { remaining.push(b); return; }
       if (sum === buyNum) {
-        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]) });
+        wins.push({ betType: betType, amount: b.amount, payout: calcProfit(b.amount, PayoutTable[betType]), profit: calcProfit(b.amount, PayoutTable[betType]) });
         remaining.push(b); // buy bet stays up after a win
       } else if (sum === 7) {
         losses.push({ betType: betType, amount: b.amount });
@@ -1105,7 +1105,7 @@
     var wonAmount = 0;
     var lostAmount = 0;
 
-    resolved.wins.forEach(function (w) { balanceDelta += w.payout; wonAmount += w.payout - w.amount; });
+    resolved.wins.forEach(function (w) { balanceDelta += w.payout; wonAmount += (w.profit != null ? w.profit : w.payout - w.amount); });
     resolved.pushes.forEach(function (p) { balanceDelta += p.amount; });
     resolved.losses.forEach(function (l) { lostAmount += l.amount; });
 
