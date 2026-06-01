@@ -24,6 +24,7 @@
     diceTotal: document.getElementById('dice-total-value'),
     diceRollHistory: document.getElementById('dice-roll-history'),
     btnRoll: document.getElementById('btn-roll'),
+    btnRepeat: document.getElementById('btn-repeat'),
     btnUndo: document.getElementById('btn-undo'),
     btnClear: document.getElementById('btn-clear-bets'),
     btnNewGame: document.getElementById('btn-new-game'),
@@ -319,7 +320,8 @@
   // Light up each bonus number as it is collected (before a 7). When no bet is
   // active the numbers show neutral.
   function renderAtsHits(bets) {
-    ['small', 'tall', 'all'].forEach(function (t) {
+    // ALL no longer lists its own numbers — its progress shows via SMALL + TALL.
+    ['small', 'tall'].forEach(function (t) {
       var container = document.getElementById('ats-nums-' + t);
       if (!container) return;
       var arr = bets[t];
@@ -841,6 +843,13 @@
     render();
   }
 
+  function onRepeat() {
+    if (isRolling) return;
+    var res = game.repeatBets();
+    setMessage(res.message, res.success ? 'success' : 'info');
+    render();
+  }
+
   function onClearBets() {
     if (isRolling) return;
     var res = game.clearRemovableBets();
@@ -915,6 +924,7 @@
     });
 
     dom.btnRoll.addEventListener('click', onRoll);
+    if (dom.btnRepeat) dom.btnRepeat.addEventListener('click', onRepeat);
     if (dom.btnUndo) dom.btnUndo.addEventListener('click', onUndo);
     dom.btnClear.addEventListener('click', onClearBets);
     dom.btnNewGame.addEventListener('click', onNewGame);

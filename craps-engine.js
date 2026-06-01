@@ -1012,6 +1012,7 @@
     this._state = new GameState({ balance: initialBalance });
     this._listeners = new Map();
     this._betLog = []; // placements since the last roll, for undo
+    this._lastRoundBets = []; // last non-empty set of placements, for repeat
   }
 
   /**
@@ -1099,6 +1100,15 @@
     var prevPhase = this._state.phase;
     var point = this._state.point;
 
+    // Snapshot everything riding on this roll so "Repeat" can rebuild the board.
+    var roundSnapshot = [];
+    var activeBefore = this._bets.getAll();
+    Object.keys(activeBefore).forEach(function (type) {
+      activeBefore[type].forEach(function (b) {
+        roundSnapshot.push({ betType: type, amount: b.amount, point: b.point });
+      });
+    });
+
     var resolved = this._bets.resolve(dice, prevPhase, point);
 
     var balanceDelta = 0;
@@ -1155,6 +1165,8 @@
       this._emit(GameEvent.PHASE_CHANGED, { from: prevPhase, to: newPhase, point: newPoint });
     }
 
+    // Remember everything that was riding so "Repeat" can rebuild the board.
+    if (roundSnapshot.length) this._lastRoundBets = roundSnapshot;
     this._betLog = []; // bets placed before this roll are now in play
 
     return { dice: dice, outcome: outcome, resolved: resolved };
@@ -1203,6 +1215,35 @@
     this._state = this._state.update({ balance: this._state.balance + refund });
     this._emit('bet-removed', { betType: last.betType, refund: refund });
     return { success: true, refund: refund, betType: last.betType, message: 'Undid ' + last.betType + ', refunded $' + refund + '.' };
+  };
+
+  /**
+   * Re-place the bets from the last round (the most recent set of placements
+   * made before a roll). Bets that can't be placed in the current phase or
+   * exceed the balance are skipped.
+   * @returns {{success: boolean, placed: number, skipped: number, total: number, message: string}}
+   */
+  CrapsGame.prototype.repeatBets = function () {
+    if (!this._lastRoundBets.length) {
+      return { success: false, placed: 0, skipped: 0, total: 0, message: 'No previous bets to repeat.' };
+    }
+    var placed = 0, skipped = 0;
+    var snapshot = this._lastRoundBets.slice();
+    var self = this;
+    snapshot.forEach(function (b) {
+      var opts = (b.point != null) ? { point: b.point } : undefined;
+      var res = self.placeBet(b.betType, b.amount, opts);
+      if (res.success) placed++; else skipped++;
+    });
+    return {
+      success: placed > 0,
+      placed: placed,
+      skipped: skipped,
+      total: snapshot.length,
+      message: placed > 0
+        ? 'Repeated ' + placed + ' bet' + (placed === 1 ? '' : 's') + (skipped ? ' (' + skipped + ' skipped)' : '') + '.'
+        : 'Could not repeat those bets right now.',
+    };
   };
 
   /**
@@ -1257,6 +1298,7 @@
   CrapsGame.prototype.reset = function () {
     this._bets.clearAll();
     this._betLog = [];
+    this._lastRoundBets = [];
     this._state = new GameState({ balance: this._initialBalance });
     this._emit(GameEvent.GAME_RESET, {});
   };
