@@ -1265,8 +1265,10 @@
 
   /**
    * Clear every bet that is NOT locked in play and refund it. Locked (kept)
-   * bets are contract wagers riding on a point: pass / don't pass during the
-   * point phase, and come / don't come bets that have traveled to a number.
+   * bets are committed wagers you can't take down: pass / don't pass during the
+   * point phase, come / don't come bets that have traveled to a number, and the
+   * Small/Tall/All bonus bets (which ride until they win or a 7). Come/pass odds
+   * are NOT locked — clearing removes the odds while leaving the line bet.
    * @returns {{success: boolean, refund: number, message: string}}
    */
   CrapsGame.prototype.clearRemovableBets = function () {
@@ -1274,6 +1276,7 @@
     var refund = this._bets.removeWhere(function (type, b) {
       if ((type === 'pass' || type === 'dont-pass') && phase === Phase.POINT) return false;
       if ((type === 'come' || type === 'dont-come') && b.point != null) return false;
+      if (type === 'small' || type === 'tall' || type === 'all') return false; // bonus rides
       return true; // removable
     });
     if (refund > 0) {

@@ -666,13 +666,13 @@
   // Bets that can be picked up / moved (non-contract). Excludes pass/come/
   // dont-pass/dont-come line bets and the point-box come chips.
   function isReturnable(type) {
+    // Bonus bets (small/tall/all) ride until they win or a 7 — not takeable down.
     return /^(place|buy|lay)-\d+$/.test(type) ||
       /^big-(6|8)$/.test(type) ||
       /^hard-\d+$/.test(type) ||
       /^horn-\d+$/.test(type) ||
       type === 'horn' || type === 'field' ||
       type === 'any-seven' || type === 'any-craps' ||
-      type === 'small' || type === 'tall' || type === 'all' ||
       type === 'pass-odds' || type === 'put';
   }
 
