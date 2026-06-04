@@ -1,4 +1,4 @@
-const CACHE = 'craps-v2';
+const CACHE = 'craps-v3';
 const ASSETS = [
   '.',
   'index.html',

@@ -974,7 +974,13 @@
       if (idx >= 0) pool.splice(idx, 1);
       else { newBet = ap; break; }
     }
-    if (newBet) showOddsPopup('come', newBet.point, newBet.amount);
+    if (newBet) {
+      // Base odds on the TOTAL come amount on this point (multiple come bets
+      // can stack onto the same number), not just the one that traveled.
+      var pt = newBet.point;
+      var pointTotal = afterPts.reduce(function (s, b) { return b.point === pt ? s + b.amount : s; }, 0);
+      showOddsPopup('come', pt, pointTotal);
+    }
   }
 
   function onRoll() {

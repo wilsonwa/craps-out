@@ -186,6 +186,9 @@ body {
   transition: background 0.15s, box-shadow 0.15s;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none; /* stop iOS long-press menu eating the hold gesture */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .bet-area:hover {
@@ -337,13 +340,32 @@ body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 24px;
+  min-height: 28px;
   border-top: 1px solid #ccc;
   background: #f0f0f0;
 }
 
 .number-bet-place:hover {
   background: #e0e0e0;
+}
+
+/* Chips inside the number boxes: small, centered overlays so they always fit
+   the thin strips and never push the number/labels around. */
+.number-box .chip {
+  width: 20px;
+  height: 20px;
+  font-size: 0.45rem;
+  border-width: 2px;
+}
+
+.number-bet-lay .chip-stack,
+.number-bet-buy .chip-stack,
+.number-bet-place .chip-stack {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: auto;
 }
 
 .place-label {

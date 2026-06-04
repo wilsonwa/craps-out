@@ -805,9 +805,8 @@
     this._bets.get(betType).forEach(function (b) {
       if (b.working === false) { remaining.push(b); return; } // not working: ignore roll
       if (sum === placeNum) {
-        var pf = calcProfit(b.amount, PayoutTable[betType]);
-        wins.push({ betType: betType, amount: b.amount, payout: pf, profit: pf });
-        remaining.push(b); // place bet stays up after a win (only winnings paid)
+        // Place bet pays once and comes down: stake + winnings returned.
+        wins.push({ betType: betType, amount: b.amount, payout: calcPayout(b.amount, PayoutTable[betType]) });
       } else if (sum === 7) {
         losses.push({ betType: betType, amount: b.amount });
       } else {
