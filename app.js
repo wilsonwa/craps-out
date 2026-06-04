@@ -18,6 +18,7 @@
   // ---- DOM References ----
   var dom = {
     balance: document.getElementById('player-balance'),
+    wagerAmount: document.getElementById('wager-amount'),
     message: document.getElementById('game-message'),
     die1: document.getElementById('die-1'),
     die2: document.getElementById('die-2'),
@@ -221,7 +222,20 @@
     renderBets();
     renderChipStacks();
     updateDraggableAreas();
+    renderWager();
     dom.btnRoll.disabled = isRolling;
+  }
+
+  // Total amount currently at risk on the felt, shown next to the balance.
+  function renderWager() {
+    if (!dom.wagerAmount) return;
+    var bets = game.getBets();
+    var atRisk = 0;
+    Object.keys(bets).forEach(function (k) {
+      bets[k].forEach(function (b) { atRisk += b.amount; });
+    });
+    dom.wagerAmount.textContent = formatCurrency(atRisk);
+    dom.wagerAmount.style.color = atRisk > 0 ? 'var(--gold-light)' : '#888';
   }
 
   function renderBalance() {
@@ -689,8 +703,7 @@
   // (touch-action: none) while empty areas keep normal page scrolling.
   function updateDraggableAreas() {
     document.querySelectorAll('.bet-area[data-bet]').forEach(function (area) {
-      var type = area.dataset.bet;
-      area.classList.toggle('has-draggable', isReturnable(type) && typeTotal(type) > 0);
+      area.classList.toggle('has-draggable', canDrag(area.dataset.bet));
     });
   }
 
@@ -716,12 +729,21 @@
     return refund;
   }
 
+  // A bet can be dragged off if it has chips and isn't locked in play. Pass /
+  // Don't Pass are line bets, takeable down only during the come-out roll.
+  function canDrag(type) {
+    if (typeTotal(type) <= 0) return false;
+    if (type === 'pass' || type === 'dont-pass') return game.getPhase() === Phase.COME_OUT;
+    return isReturnable(type);
+  }
+
   function onChipPointerDown(e) {
+    dragHappened = false; // fresh gesture — never carry a stale suppress flag
     if (isRolling || e.button === 2) return;
     var area = e.target.closest ? e.target.closest('.bet-area[data-bet]') : null;
     if (!area) return;
     var type = area.dataset.bet;
-    if (!isReturnable(type) || typeTotal(type) <= 0) return; // nothing to drag here
+    if (!canDrag(type)) return; // nothing draggable here
     drag = { type: type, amount: typeTotal(type), startX: e.clientX, startY: e.clientY, clone: null, active: false };
     document.addEventListener('pointermove', onChipPointerMove, { passive: false });
     document.addEventListener('pointerup', onChipPointerUp);
@@ -758,7 +780,11 @@
     if (d.clone) d.clone.remove();
     if (!d.active) return; // never moved — treat as a normal tap
 
-    dragHappened = true; // suppress the click that follows on the source bet area
+    // Suppress the click that may fire on the source area right after a drag.
+    // Cleared on the next tick so it can never leak to a later, unrelated tap
+    // (which previously ate the next bet placed after a drag-to-take-down).
+    dragHappened = true;
+    setTimeout(function () { dragHappened = false; }, 0);
 
     var el = document.elementFromPoint(e.clientX, e.clientY);
     var sourceName = formatBetName(d.type);
@@ -926,7 +952,7 @@
     render();
   }
 
-  function maybePromptOdds(result, comePointsBefore) {
+  function maybePromptOdds(result, comeBefore) {
     var bets = game.getBets();
     // Pass point just established → offer pass odds
     if (result.outcome === Outcome.POINT_SET && bets.pass && bets.pass.length) {
@@ -934,20 +960,21 @@
       showOddsPopup('pass', game.getPoint(), flat);
       return;
     }
-    // A come bet just traveled to a new number → offer come odds for it
+    // Find the come bet that just traveled to a number (present now with a
+    // point, but not in the pre-roll snapshot) and offer odds for its amount.
     var afterPts = (bets.come || []).filter(function (b) { return b.point != null; });
-    var beforeCount = {};
-    comePointsBefore.forEach(function (p) { beforeCount[p] = (beforeCount[p] || 0) + 1; });
-    var afterCount = {};
-    afterPts.forEach(function (b) { afterCount[b.point] = (afterCount[b.point] || 0) + 1; });
-    var newPoint = null;
-    Object.keys(afterCount).forEach(function (p) {
-      if (newPoint == null && afterCount[p] > (beforeCount[p] || 0)) newPoint = Number(p);
-    });
-    if (newPoint != null) {
-      var nb = afterPts.find(function (x) { return x.point === newPoint; });
-      showOddsPopup('come', newPoint, nb ? nb.amount : 0);
+    var pool = comeBefore.slice();
+    var newBet = null;
+    for (var i = 0; i < afterPts.length; i++) {
+      var ap = afterPts[i];
+      var idx = -1;
+      for (var j = 0; j < pool.length; j++) {
+        if (pool[j].p === ap.point && pool[j].a === ap.amount) { idx = j; break; }
+      }
+      if (idx >= 0) pool.splice(idx, 1);
+      else { newBet = ap; break; }
     }
+    if (newBet) showOddsPopup('come', newBet.point, newBet.amount);
   }
 
   function onRoll() {
@@ -959,15 +986,13 @@
       return;
     }
 
-    var comePointsBefore = (bets.come || [])
-      .filter(function (b) { return b.point != null; })
-      .map(function (b) { return b.point; });
+    var comeBefore = (bets.come || []).map(function (b) { return { a: b.amount, p: b.point }; });
     var nwBefore = netWorth();
 
     animateRoll(function () {
       var result = game.roll();
       processRollResult(result, nwBefore);
-      maybePromptOdds(result, comePointsBefore);
+      maybePromptOdds(result, comeBefore);
     });
   }
 

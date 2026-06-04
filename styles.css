@@ -88,6 +88,29 @@ body {
   font-size: 1.3rem;
 }
 
+/* Total wagered / in play, shown next to the balance */
+.wager-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.wager-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9a9ab0;
+}
+
+.wager-amount {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--gold-light);
+}
+
 /* Last-roll result, shown next to the balance (replaces the old status row) */
 .result-chip {
   min-width: 3rem;
@@ -266,7 +289,8 @@ body {
   border-right: none;
 }
 
-.number-bet-place {
+/* Buy is the big spot on the number; Place is the thin strip below it */
+.number-bet-buy {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -277,7 +301,7 @@ body {
   background: white;
 }
 
-.number-bet-place:hover {
+.number-bet-buy:hover {
   background: rgba(0, 0, 0, 0.05);
 }
 
@@ -291,6 +315,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   height: 24px;
   border-bottom: 1px solid #ccc;
   background: #e8e0f0;
@@ -307,27 +332,38 @@ body {
   text-transform: uppercase;
 }
 
-.number-bet-buy {
+.number-bet-place {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   height: 24px;
   border-top: 1px solid #ccc;
   background: #f0f0f0;
 }
 
-.number-bet-buy:hover {
+.number-bet-place:hover {
   background: #e0e0e0;
 }
 
-.buy-label {
-  font-size: 0.65rem;
+.place-label {
+  font-size: 0.62rem;
   color: #666;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-/* Place-bet payout ratio printed in the box (casino style) */
+/* Buy true-odds printed on the number (casino style) */
+.buy-odds {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #0a7d3c;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Place payout ratio printed in the strip */
 .place-odds {
   font-size: 0.55rem;
   font-weight: 700;
@@ -2148,7 +2184,7 @@ body.dragging-chip .controls {
     font-size: 0.85rem;
   }
 
-  .number-bet-place {
+  .number-bet-buy {
     min-height: 44px;
   }
 
@@ -2160,11 +2196,12 @@ body.dragging-chip .controls {
     font-size: 0.44rem;
   }
 
-  .number-bet-buy {
+  .number-bet-place {
     height: 18px;
   }
 
-  .buy-label {
+  .place-label,
+  .buy-odds {
     font-size: 0.48rem;
   }
 
@@ -2333,7 +2370,7 @@ body.dragging-chip .controls {
   .dont-come-bar {
     min-height: 48px;
   }
-  .number-box .number-bet-place {
+  .number-box .number-bet-buy {
     min-height: 30px;
   }
   .number-bet-lay {
@@ -2342,10 +2379,11 @@ body.dragging-chip .controls {
   .lay-label {
     font-size: 0.46rem;
   }
-  .number-bet-buy {
+  .number-bet-place {
     height: 16px;
   }
-  .buy-label {
+  .place-label,
+  .buy-odds {
     font-size: 0.46rem;
   }
 

@@ -18,6 +18,10 @@
     <div class="player-info">
       <span class="balance-label">Balance</span>
       <span id="player-balance" class="balance-amount">$1000</span>
+      <span class="wager-pill" title="Total wagered and in play">
+        <span class="wager-label">In Play</span>
+        <span id="wager-amount" class="wager-amount">$0</span>
+      </span>
       <span id="game-message" class="result-chip" aria-live="polite" role="status">&ndash;</span>
     </div>
   </header>
@@ -74,14 +78,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-4"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-4" aria-label="Place 4">
+                <button class="bet-area number-bet-buy" data-bet="buy-4" aria-label="Buy 4">
                   <span class="number-label">4</span>
+                  <span class="buy-odds">BUY 2:1</span>
+                  <div class="chip-stack" id="chips-buy-4"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-4" aria-label="Place 4">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">9:5</span>
                   <div class="chip-stack" id="chips-place-4"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-4" aria-label="Buy 4">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-4"></div>
                 </button>
               </div>
 
@@ -93,14 +98,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-5"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-5" aria-label="Place 5">
+                <button class="bet-area number-bet-buy" data-bet="buy-5" aria-label="Buy 5">
                   <span class="number-label">5</span>
+                  <span class="buy-odds">BUY 3:2</span>
+                  <div class="chip-stack" id="chips-buy-5"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-5" aria-label="Place 5">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">7:5</span>
                   <div class="chip-stack" id="chips-place-5"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-5" aria-label="Buy 5">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-5"></div>
                 </button>
               </div>
 
@@ -112,14 +118,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-6"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-6" aria-label="Place 6">
+                <button class="bet-area number-bet-buy" data-bet="buy-6" aria-label="Buy 6">
                   <span class="number-label">6</span>
+                  <span class="buy-odds">BUY 6:5</span>
+                  <div class="chip-stack" id="chips-buy-6"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-6" aria-label="Place 6">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-6"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-6" aria-label="Buy 6">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-6"></div>
                 </button>
               </div>
 
@@ -131,14 +138,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-8"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-8" aria-label="Place 8">
+                <button class="bet-area number-bet-buy" data-bet="buy-8" aria-label="Buy 8">
                   <span class="number-label">8</span>
+                  <span class="buy-odds">BUY 6:5</span>
+                  <div class="chip-stack" id="chips-buy-8"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-8" aria-label="Place 8">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">7:6</span>
                   <div class="chip-stack" id="chips-place-8"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-8" aria-label="Buy 8">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-8"></div>
                 </button>
               </div>
 
@@ -150,14 +158,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-9"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-9" aria-label="Place 9">
+                <button class="bet-area number-bet-buy" data-bet="buy-9" aria-label="Buy 9">
                   <span class="number-label">9</span>
+                  <span class="buy-odds">BUY 3:2</span>
+                  <div class="chip-stack" id="chips-buy-9"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-9" aria-label="Place 9">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">7:5</span>
                   <div class="chip-stack" id="chips-place-9"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-9" aria-label="Buy 9">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-9"></div>
                 </button>
               </div>
 
@@ -169,14 +178,15 @@
                   <span class="lay-label">Lay</span>
                   <div class="chip-stack" id="chips-lay-10"></div>
                 </button>
-                <button class="bet-area number-bet-place" data-bet="place-10" aria-label="Place 10">
+                <button class="bet-area number-bet-buy" data-bet="buy-10" aria-label="Buy 10">
                   <span class="number-label">10</span>
+                  <span class="buy-odds">BUY 2:1</span>
+                  <div class="chip-stack" id="chips-buy-10"></div>
+                </button>
+                <button class="bet-area number-bet-place" data-bet="place-10" aria-label="Place 10">
+                  <span class="place-label">Place</span>
                   <span class="place-odds">9:5</span>
                   <div class="chip-stack" id="chips-place-10"></div>
-                </button>
-                <button class="bet-area number-bet-buy" data-bet="buy-10" aria-label="Buy 10">
-                  <span class="buy-label">Buy</span>
-                  <div class="chip-stack" id="chips-buy-10"></div>
                 </button>
               </div>
             </div>
