@@ -1,4 +1,4 @@
-const CACHE = 'craps-v3';
+const CACHE = 'craps-v4-bubble';
 const ASSETS = [
   '.',
   'index.html',
@@ -6,6 +6,9 @@ const ASSETS = [
   'craps-engine.js',
   'app.js',
   'manifest.json',
+  'icons/icon.svg',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
 ];
 
 self.addEventListener('install', e => {
@@ -24,15 +27,24 @@ self.addEventListener('activate', e => {
 
 // Network-first: always try the network so updates show immediately,
 // fall back to the cache when offline. Refresh the cache on every hit.
+// Only same-origin app files are cached; tests/ is never cached.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.indexOf('/tests/') !== -1) return;
   e.respondWith(
     fetch(e.request)
       .then(resp => {
-        const copy = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        if (resp && resp.ok && resp.type === 'basic') {
+          const copy = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        }
         return resp;
       })
-      .catch(() => caches.match(e.request).then(r => r || caches.match('index.html')))
+      .catch(() =>
+        caches.match(e.request, { ignoreSearch: true })
+          .then(r => r || caches.match('index.html'))
+      )
   );
 });

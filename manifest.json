@@ -1,12 +1,13 @@
 {
   "name": "Craps",
   "short_name": "Craps",
-  "description": "Casino craps table simulator",
+  "description": "Bubble craps table — plays offline",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
-  "orientation": "portrait-primary",
+  "background_color": "#0d0906",
+  "theme_color": "#0d0906",
+  "orientation": "any",
   "icons": [
     {
       "src": "icons/icon-192.png",

@@ -1,1129 +1,1368 @@
 /**
- * Craps Game UI Controller — v2 (player only, no AI)
- * Connects the CrapsGame engine (from craps-engine.js) to the DOM.
+ * Bubble Craps — UI controller.
+ * Drives the CrapsGame engine (craps-engine.js) and owns every pixel on screen.
+ *
+ * Sections: config · debug hooks · helpers · sound · DOM build · render ·
+ *           dice · roll flow · placing bets · odds popup · popover · gestures ·
+ *           buttons · menu · dialogs · boot
  */
 (function () {
   'use strict';
 
-  // ---- Engine Constants ----
-  var Phase = CrapsConstants.Phase;
-  var Outcome = CrapsConstants.Outcome;
-  var GameEvent = CrapsConstants.GameEvent;
-  var POINT_NUMBERS = CrapsConstants.POINT_NUMBERS;
-  var SMALL_NUMBERS = CrapsConstants.SMALL_NUMBERS;
-  var TALL_NUMBERS = CrapsConstants.TALL_NUMBERS;
-  var ALL_NUMBERS = CrapsConstants.ALL_NUMBERS;
-  var PayoutTable = CrapsConstants.PayoutTable;
+  // ===================================================================
+  // Config
+  // ===================================================================
+  var POINTS = [4, 5, 6, 8, 9, 10];
+  var HORN = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
+  var CHIPS = [1, 5, 25, 100, 500];
+  var HOLD_MS = 420;
+  var DRAG_TOL = 14; // px (Euclidean) a press on a draggable bet must travel to become a drag
+  var TUMBLE_MS = 900;
+  var STORE = { sound: 'craps.sound', chip: 'craps.chip' };
 
-  // ---- DOM References ----
-  var dom = {
-    balance: document.getElementById('player-balance'),
-    wagerAmount: document.getElementById('wager-amount'),
-    message: document.getElementById('game-message'),
-    die1: document.getElementById('die-1'),
-    die2: document.getElementById('die-2'),
-    diceTotal: document.getElementById('dice-total-value'),
-    diceRollHistory: document.getElementById('dice-roll-history'),
-    btnRoll: document.getElementById('btn-roll'),
-    btnRepeat: document.getElementById('btn-repeat'),
-    btnUndo: document.getElementById('btn-undo'),
-    btnClear: document.getElementById('btn-clear-bets'),
-    btnNewGame: document.getElementById('btn-new-game'),
-    betAmount: document.getElementById('bet-amount'),
-    betsList: document.getElementById('bets-list'),
-    totalWagered: document.getElementById('total-wagered'),
-    historyList: document.getElementById('history-list'),
-    bettingHistoryList: document.getElementById('betting-history-list'),
-    chipButtons: document.querySelectorAll('.chip-btn'),
-    betAreas: document.querySelectorAll('.bet-area'),
-    oddsModal: document.getElementById('odds-modal'),
-    oddsModalTitle: document.getElementById('odds-modal-title'),
-    oddsModalSub: document.getElementById('odds-modal-sub'),
-    oddsOpt1x: document.getElementById('odds-opt-1x'),
-    oddsOpt2x: document.getElementById('odds-opt-2x'),
-    oddsOptNo: document.getElementById('odds-opt-no'),
+  var TRUE_ODDS = { 4: '2:1', 5: '3:2', 6: '6:5', 8: '6:5', 9: '3:2', 10: '2:1' };
+  var PLACE_PAY = { 4: '9:5', 5: '7:5', 6: '7:6', 8: '7:6', 9: '7:5', 10: '9:5' };
+  var LAY_PAY = { 4: '1:2', 5: '2:3', 6: '5:6', 8: '5:6', 9: '2:3', 10: '1:2' };
+
+  var PROPS = [
+    { spot: 'hard-4', area: 'h4', name: 'Hard 4', dice: [2, 2], pay: '7 to 1' },
+    { spot: 'hard-6', area: 'h6', name: 'Hard 6', dice: [3, 3], pay: '9 to 1' },
+    { spot: 'hard-8', area: 'h8', name: 'Hard 8', dice: [4, 4], pay: '9 to 1' },
+    { spot: 'hard-10', area: 'h10', name: 'Hard 10', dice: [5, 5], pay: '7 to 1' },
+    { spot: 'any-seven', area: 'a7', name: 'Any 7', pay: '4 to 1' },
+    { spot: 'any-craps', area: 'ac', name: 'Any Craps', pay: '7 to 1' },
+    { spot: 'horn-2', area: 'y2', name: '2', dice: [1, 1], pay: '30 to 1' },
+    { spot: 'horn-3', area: 'y3', name: '3', dice: [1, 2], pay: '15 to 1' },
+    { spot: 'horn-11', area: 'y11', name: '11', dice: [5, 6], pay: '15 to 1' },
+    { spot: 'horn-12', area: 'y12', name: '12', dice: [6, 6], pay: '30 to 1' },
+    { spot: 'horn', area: 'hn', name: 'Horn', pay: '2 · 3 · 11 · 12' },
+  ];
+
+  var NAMES = {
+    'pass': 'Pass Line', 'dont-pass': "Don't Pass", 'come': 'Come', 'dont-come': "Don't Come",
+    'pass-odds': 'Pass Odds', 'dont-pass-odds': "Don't Pass Odds", 'come-odds': 'Come Odds',
+    'dont-come-odds': "Don't Come Odds", 'field': 'Field', 'big-6': 'Big 6', 'big-8': 'Big 8',
+    'any-seven': 'Any 7', 'any-craps': 'Any Craps', 'horn-2': '2 (Aces)', 'horn-3': '3 (Ace-Deuce)',
+    'horn-11': '11 (Yo)', 'horn-12': '12 (Boxcars)', 'put': 'Put', 'small': 'Small', 'tall': 'Tall',
+    'all': 'All', 'horn': 'Horn',
+  };
+  POINTS.forEach(function (n) {
+    NAMES['place-' + n] = 'Place ' + n;
+    NAMES['buy-' + n] = 'Buy ' + n;
+    NAMES['lay-' + n] = 'Lay ' + n;
+  });
+  [4, 6, 8, 10].forEach(function (n) { NAMES['hard-' + n] = 'Hard ' + n; });
+
+  var TOGGLEABLE = /^(place|buy|lay)-\d+$|^big-[68]$|^hard-\d+$/;
+  var POINTED = { 'come': 1, 'dont-come': 1, 'come-odds': 1, 'dont-come-odds': 1 };
+
+  // ===================================================================
+  // Engine + debug hooks
+  // ===================================================================
+  var params = new URLSearchParams(location.search);
+  var DEBUG = params.get('debug') === '1';
+  var SAFE_TEST = DEBUG && params.get('safe') === '1';
+  var rollQueue = [];
+
+  var game = DEBUG
+    ? new CrapsGame(1000, { randomFn: function () { return rollQueue.length ? rollQueue.shift() : Math.random(); } })
+    : new CrapsGame(1000);
+
+  // ===================================================================
+  // State
+  // ===================================================================
+  var ui = {
+    chip: 25,
+    rolling: false,
+    sound: true,
+    log: [],          // per-roll records for the menu
+    offers: [],       // queued odds offers
+    odds: null,       // open odds popup context
+    pop: null,        // open popover context
+    gesture: null,    // active pointer gesture
+    spin: [{ x: 0, y: 0 }, { x: 0, y: 0 }],
+    lastPointerType: 'mouse',
+  };
+  var landscapeMQ = window.matchMedia ? window.matchMedia('(orientation: landscape)') : null;
+  var reduceMotion = window.matchMedia ?window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+  try {
+    var s = localStorage.getItem(STORE.sound);
+    if (s === '0') ui.sound = false;
+    var c = parseInt(localStorage.getItem(STORE.chip), 10);
+    if (CHIPS.indexOf(c) !== -1) ui.chip = c;
+  } catch (e) { /* storage unavailable */ }
+
+  // ===================================================================
+  // Helpers
+  // ===================================================================
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function cents(x) { return Math.round(x * 100); }
+  function money(x, forceCents) {
+    var neg = x < 0; x = Math.abs(x);
+    var whole = cents(x) % 100 === 0;
+    var s = (whole && !forceCents)
+      ? Math.round(x).toLocaleString('en-US')
+      : x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (neg ? '−' : '') + '$' + s;
+  }
+  function chipClass(a) {
+    if (a >= 1000) return 'c1000';
+    if (a >= 500) return 'c500';
+    if (a >= 100) return 'c100';
+    if (a >= 25) return 'c25';
+    if (a >= 5) return 'c5';
+    return 'c1';
+  }
+  function chipLabel(a) {
+    if (a >= 10000) return Math.floor(a / 1000) + 'K';
+    if (a >= 1000) return (Math.floor(a / 100) / 10).toString().replace(/\.0$/, '') + 'K';
+    return String(Math.round(a));
+  }
+  function name(t, p) {
+    var n = NAMES[t] || t;
+    if (p != null && POINTED[t]) n += ' ' + p;
+    return n;
+  }
+  function bets() { return game.getBets(); }
+  function sumOf(t, p) {
+    var arr = bets()[t] || [];
+    var c = 0;
+    arr.forEach(function (b) { if (p === undefined || b.point === p) c += cents(b.amount); });
+    return c / 100;
+  }
+  function parseSpot(spot) {
+    var at = spot.indexOf('@');
+    if (at !== -1) return { type: spot.slice(0, at), point: parseInt(spot.slice(at + 1), 10) };
+    if (spot === 'come' || spot === 'dont-come') return { type: spot, point: null };
+    return { type: spot, point: undefined };
+  }
+  function spotAmount(spot) {
+    if (spot === 'horn') { var t = 0; HORN.forEach(function (h) { t += sumOf(h); }); return t; }
+    var s = parseSpot(spot);
+    return sumOf(s.type, s.point);
+  }
+  function isOn(type) {
+    var arr = bets()[type];
+    if (!arr || !arr.length) return true;
+    return arr.some(function (b) { return b.working; });
+  }
+  function pipsHtml(n, cls) {
+    var map = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    var on = map[n], h = '';
+    for (var i = 0; i < 9; i++) h += on.indexOf(i) !== -1 ? '<i></i>' : '<span></span>';
+    return '<span class="' + cls + '">' + h + '</span>';
+  }
+  function miniDice(d) { return pipsHtml(d[0], 'mdie') + pipsHtml(d[1], 'mdie'); }
+
+  // ===================================================================
+  // Sound (synthesized, unlocked on first trusted touch)
+  // ===================================================================
+  var Sound = {
+    ctx: null,
+    noise: null,
+    unlock: function (e) {
+      if (e && e.isTrusted === false) return;
+      if (navigator.userActivation && !navigator.userActivation.isActive) return;
+      try {
+        if (!this.ctx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          this.ctx = new AC();
+          var len = this.ctx.sampleRate * 0.5;
+          this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+          var d = this.noise.getChannelData(0);
+          for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      } catch (err) { this.ctx = null; }
+    },
+    ready: function () { return ui.sound && this.ctx && this.ctx.state === 'running'; },
+    tone: function (freq, t0, dur, type, vol, freqEnd) {
+      var c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t0);
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.2, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    },
+    burst: function (t0, dur, freq, vol) {
+      var c = this.ctx, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = this.noise;
+      f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2;
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(c.destination);
+      src.start(t0, Math.random() * 0.3); src.stop(t0 + dur + 0.02);
+    },
+    play: function (kind) {
+      if (!this.ready()) return;
+      var t = this.ctx.currentTime + 0.005, i;
+      if (kind === 'chip') {
+        this.burst(t, 0.05, 3200, 0.35);
+        this.tone(2400, t, 0.05, 'triangle', 0.08, 1500);
+      } else if (kind === 'dice') {
+        for (i = 0; i < 9; i++) this.burst(t + i * 0.075 + Math.random() * 0.03, 0.05, 1800 + Math.random() * 1600, 0.3);
+        this.burst(t + 0.78, 0.08, 1200, 0.4);
+      } else if (kind === 'win') {
+        [523.25, 659.25, 783.99, 1046.5].forEach(function (f, k) { Sound.tone(f, t + k * 0.08, 0.22, 'triangle', 0.16); });
+      } else if (kind === 'lose') {
+        this.tone(330, t, 0.22, 'sawtooth', 0.07, 220);
+        this.tone(220, t + 0.16, 0.32, 'sawtooth', 0.07, 140);
+      } else if (kind === 'tick') {
+        this.tone(1200, t, 0.04, 'sine', 0.06);
+      }
+    },
   };
 
-  // ---- State ----
-  var selectedChipValue = 25;
-  var isRolling = false;
+  // ===================================================================
+  // DOM build
+  // ===================================================================
+  var dom = {};
 
-  // ---- Game Engine ----
-  var game = new CrapsGame(1000);
-
-  // ---- Formatting helpers ----
-  var BET_NAMES = {
-    'pass': 'Pass Line',
-    'dont-pass': "Don't Pass",
-    'come': 'Come',
-    'dont-come': "Don't Come",
-    'field': 'Field',
-    'big-6': 'Big 6',
-    'big-8': 'Big 8',
-    'place-4': 'Place 4',
-    'place-5': 'Place 5',
-    'place-6': 'Place 6',
-    'place-8': 'Place 8',
-    'place-9': 'Place 9',
-    'place-10': 'Place 10',
-    'buy-4': 'Buy 4',
-    'buy-5': 'Buy 5',
-    'buy-6': 'Buy 6',
-    'buy-8': 'Buy 8',
-    'buy-9': 'Buy 9',
-    'buy-10': 'Buy 10',
-    'lay-4': 'Lay 4',
-    'lay-5': 'Lay 5',
-    'lay-6': 'Lay 6',
-    'lay-8': 'Lay 8',
-    'lay-9': 'Lay 9',
-    'lay-10': 'Lay 10',
-    'put': 'Put',
-    'small': 'All Small',
-    'tall': 'All Tall',
-    'all': 'Make Em All',
-    'pass-odds': 'Pass Odds',
-    'dont-pass-odds': "Don't Pass Odds",
-    'come-odds': 'Come Odds',
-    'dont-come-odds': "Don't Come Odds",
-    'any-seven': 'Any 7',
-    'any-craps': 'Any Craps',
-    'hard-4': 'Hard 4',
-    'hard-6': 'Hard 6',
-    'hard-8': 'Hard 8',
-    'hard-10': 'Hard 10',
-    'horn': 'Horn',
-    'horn-2': 'Horn 2',
-    'horn-3': 'Horn 3',
-    'horn-11': 'Horn 11',
-    'horn-12': 'Horn 12',
-    'split-seven-craps': 'Split 7/Craps',
-    'split-craps-hard4': 'Split Craps/H4',
-    'split-hard4-hard6': 'Split H4/H6',
-    'split-hard6-hard8': 'Split H6/H8',
-    'split-hard8-hard10': 'Split H8/H10',
-    'split-hard10-horn2': 'Split H10/2',
-    'split-horn2-horn3': 'Split 2/3',
-    'split-horn3-horn11': 'Split 3/11',
-    'split-horn11-horn12': 'Split 11/12',
-  };
-
-  // Horn = one wager split equally across 2 / 3 / 11 / 12 (one-roll).
-  var HORN_GROUP = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
-
-  // Split bet mapping: each split bet maps to two underlying prop bet types
-  var SPLIT_BET_MAP = {
-    'split-seven-craps':   ['any-seven', 'any-craps'],
-    'split-craps-hard4':   ['any-craps', 'hard-4'],
-    'split-hard4-hard6':   ['hard-4', 'hard-6'],
-    'split-hard6-hard8':   ['hard-6', 'hard-8'],
-    'split-hard8-hard10':  ['hard-8', 'hard-10'],
-    'split-hard10-horn2':  ['hard-10', 'horn-2'],
-    'split-horn2-horn3':   ['horn-2', 'horn-3'],
-    'split-horn3-horn11':  ['horn-3', 'horn-11'],
-    'split-horn11-horn12': ['horn-11', 'horn-12'],
-  };
-
-  var OUTCOME_MESSAGES = {};
-  OUTCOME_MESSAGES[Outcome.NATURAL] = 'Natural! {sum} is a winner!';
-  OUTCOME_MESSAGES[Outcome.CRAPS] = 'Craps! {sum} - shooter craps out!';
-  OUTCOME_MESSAGES[Outcome.POINT_SET] = 'Point is {sum}. Hit {sum} before rolling a 7.';
-  OUTCOME_MESSAGES[Outcome.POINT_HIT] = 'Point hit! {sum} - the shooter made the point!';
-  OUTCOME_MESSAGES[Outcome.SEVEN_OUT] = 'Seven out! Pass line loses.';
-  OUTCOME_MESSAGES[Outcome.NEUTRAL] = 'Rolled {sum}. No decision on the pass line.';
-
-  function formatBetName(key) {
-    return BET_NAMES[key] || key;
+  function buildNumbers() {
+    var wrap = $('numbers');
+    POINTS.forEach(function (n) {
+      var box = el('div', 'box');
+      box.dataset.n = n;
+      box.innerHTML =
+        '<button type="button" class="spot lay" data-spot="lay-' + n + '" aria-label="Lay ' + n + ', pays ' + LAY_PAY[n] + '">' +
+          '<span class="lbl">Lay</span><span class="pay">' + LAY_PAY[n] + '</span><span class="cs"></span></button>' +
+        '<button type="button" class="spot buy" data-spot="buy-' + n + '" aria-label="Buy ' + n + ', true odds ' + TRUE_ODDS[n] + '">' +
+          '<span class="lane"><span class="travel dc-t"></span><span class="travel come-t"></span></span>' +
+          '<span class="drow"><span class="num">' + n + '</span><span class="puck-slot"></span></span>' +
+          '<span class="lrow"><span class="pay"><span>Buy</span> <span>' + TRUE_ODDS[n] + '</span></span><span class="cs"></span></span>' +
+          '</button>' +
+        '<button type="button" class="spot place" data-spot="place-' + n + '" aria-label="Place ' + n + ', pays ' + PLACE_PAY[n] + '">' +
+          '<span class="lbl">Place</span><span class="pay">' + PLACE_PAY[n] + '</span><span class="cs"></span></button>';
+      wrap.appendChild(box);
+    });
   }
 
-  function formatCurrency(n) {
-    return '$' + (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2));
+  function buildProps() {
+    var wrap = $('props');
+    PROPS.forEach(function (p) {
+      var b = el('button', 'spot prop p-' + p.area);
+      b.type = 'button';
+      b.dataset.spot = p.spot;
+      b.style.gridArea = p.area;
+      b.setAttribute('aria-label', (p.spot === 'horn' ? 'Horn, splits four ways' : p.name) + ', pays ' + p.pay);
+      var h = '';
+      if (p.dice) h += '<span class="dice-pair">' + miniDice(p.dice) + '</span>';
+      if (!p.dice || p.spot.indexOf('hard') === 0) h += '<span class="lbl">' + p.name + '</span>';
+      else h += '<span class="lbl">' + p.name + '</span>';
+      h += '<span class="pay">' + p.pay + '</span><span class="cs"></span>';
+      b.innerHTML = h;
+      wrap.appendChild(b);
+    });
   }
 
-  function getChipClass(amount) {
-    if (amount >= 500) return 'chip-500';
-    if (amount >= 100) return 'chip-100';
-    if (amount >= 25)  return 'chip-25';
-    if (amount >= 5)   return 'chip-5';
-    return 'chip-1';
+  function buildBonusPips() {
+    document.querySelectorAll('[data-pips]').forEach(function (p) {
+      var nums = p.dataset.pips === 'small' ? [2, 3, 4, 5, 6] : [8, 9, 10, 11, 12];
+      p.innerHTML = nums.map(function (n) { return '<b data-n="' + n + '">' + n + '</b>'; }).join('');
+    });
+    document.querySelectorAll('[data-dice]').forEach(function (s) {
+      s.innerHTML = miniDice(s.dataset.dice.split(',').map(Number));
+    });
   }
 
-  function formatChipLabel(amount) {
-    if (amount >= 1000) return (amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1) + 'k';
-    return '$' + amount;
+  function buildDice() {
+    ['die1', 'die2'].forEach(function (id, k) {
+      var d = $(id);
+      var cube = el('div', 'cube');
+      for (var f = 1; f <= 6; f++) {
+        var face = el('div', 'face f' + f);
+        face.innerHTML = pipsHtml(f, 'x').replace(/^<span class="x">|<\/span>$/g, '');
+        cube.appendChild(face);
+      }
+      d.appendChild(cube);
+      setDie(k, k === 0 ? 5 : 2, false);
+    });
   }
 
-  // ---- Chip Cursor ----
-  var CHIP_CURSOR_COLORS = {
-    1:   { bg: '#cccccc', text: '#333333' },
-    5:   { bg: '#cc2233', text: '#ffffff' },
-    25:  { bg: '#22aa44', text: '#ffffff' },
-    100: { bg: '#222222', text: '#ffffff' },
-    500: { bg: '#8833bb', text: '#ffffff' },
-  };
-
-  function buildChipCursorSVG(denomination) {
-    var colors = CHIP_CURSOR_COLORS[denomination] || CHIP_CURSOR_COLORS[25];
-    var label = denomination >= 1000 ? (denomination / 1000) + 'k' : '$' + denomination;
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">'
-      + '<circle cx="16" cy="16" r="14" fill="' + colors.bg + '" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>'
-      + '<circle cx="16" cy="16" r="10" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1" stroke-dasharray="3,2"/>'
-      + '<text x="16" y="20" text-anchor="middle" font-size="10" font-weight="bold" fill="' + colors.text + '">' + label + '</text>'
-      + '</svg>';
-    return svg;
+  function buildPuck() {
+    dom.puck = el('span', 'puck off', 'OFF');
   }
 
-  function updateChipCursor(denomination) {
-    if (!denomination) {
-      document.documentElement.style.cursor = '';
-      return;
-    }
-    var svg = buildChipCursorSVG(denomination);
-    var encoded = encodeURIComponent(svg)
-      .replace(/'/g, '%27')
-      .replace(/"/g, '%22');
-    document.documentElement.style.cursor = "url('data:image/svg+xml;utf8," + decodeURIComponent(encoded) + "') 16 16, auto";
-  }
+  // ===================================================================
+  // Render
+  // ===================================================================
+  var lastPoint = null;
 
-  // ---- Flying Chip Animation ----
-  function createFlyingChip(betZone, amount, isWin) {
-    var area = document.querySelector('[data-bet="' + betZone + '"]');
-    if (!area) return;
-
-    var rect = area.getBoundingClientRect();
-    var el = document.createElement('div');
-    el.className = 'flying-chip ' + (isWin ? 'win' : 'loss');
-
-    var chipIcon = document.createElement('div');
-    chipIcon.className = 'chip-icon';
-    chipIcon.textContent = formatChipLabel(amount);
-    el.appendChild(chipIcon);
-
-    var label = document.createElement('div');
-    label.className = 'amount-label';
-    label.textContent = (isWin ? '+' : '-') + formatCurrency(amount);
-    el.appendChild(label);
-
-    el.style.left = (rect.left + rect.width / 2 - 16) + 'px';
-    el.style.top = (rect.top + rect.height / 2 - 16) + 'px';
-
-    document.body.appendChild(el);
-
-    setTimeout(function () {
-      if (el.parentNode) el.parentNode.removeChild(el);
-    }, 1050);
-  }
-
-  // ---- Rendering ----
   function render() {
-    renderBalance();
-    renderPhase();
-    renderPointMarkers();
-    renderBets();
-    renderChipStacks();
-    updateDraggableAreas();
-    renderWager();
-    dom.btnRoll.disabled = isRolling;
-  }
-
-  // Total amount currently at risk on the felt, shown next to the balance.
-  function renderWager() {
-    if (!dom.wagerAmount) return;
-    var bets = game.getBets();
-    var atRisk = 0;
-    Object.keys(bets).forEach(function (k) {
-      bets[k].forEach(function (b) { atRisk += b.amount; });
-    });
-    dom.wagerAmount.textContent = formatCurrency(atRisk);
-    dom.wagerAmount.style.color = atRisk > 0 ? 'var(--gold-light)' : '#888';
-  }
-
-  function renderBalance() {
-    var bal = game.getBalance();
-    dom.balance.textContent = formatCurrency(bal);
-    dom.balance.style.color = bal < game._initialBalance ? 'var(--danger)' : 'var(--success)';
-  }
-
-  function renderPhase() {
-    // Phase / point are shown on the board via the ON/OFF puck.
-    // Here we only show/hide the PUT bet, which is point-phase only.
-    var putBtn = document.querySelector('.put-bet');
-    if (!putBtn) return;
-    if (game.getGameState().phase === Phase.COME_OUT) {
-      putBtn.classList.add('hidden');
-    } else {
-      putBtn.classList.remove('hidden');
-    }
-  }
-
-  var _previousPoint = null;
-
-  function renderPointMarkers() {
+    var b = bets();
+    var phase = game.getPhase();
     var point = game.getPoint();
-    POINT_NUMBERS.forEach(function (num) {
-      var marker = document.getElementById('point-marker-' + num);
-      if (!marker) return;
-      var isOn = (point === num);
-      marker.classList.toggle('on', isOn);
-      if (isOn && _previousPoint !== num) {
-        marker.classList.remove('glow-burst');
-        void marker.offsetWidth;
-        marker.classList.add('glow-burst');
-        marker.addEventListener('animationend', function handler() {
-          marker.classList.remove('glow-burst');
-          marker.removeEventListener('animationend', handler);
-        });
+
+    // meters
+    dom.credit.textContent = money(game.getBalance(), true);
+    dom.bet.textContent = money(game.getTotalAtRisk());
+    dom.point.textContent = point ? String(point) : 'OFF';
+    dom.point.classList.toggle('on', !!point);
+
+    // puck
+    var puckParent = point ? document.querySelector('.box[data-n="' + point + '"] .puck-slot') : $('puck-home');
+    if (dom.puck.parentNode !== puckParent) {
+      puckParent.appendChild(dom.puck);
+      dom.puck.className = 'puck ' + (point ? 'on' : 'off');
+      dom.puck.textContent = point ? 'ON' : 'OFF';
+      if (point !== lastPoint && !reduceMotion.matches) {
+        dom.puck.classList.remove('pop'); void dom.puck.offsetWidth; dom.puck.classList.add('pop');
       }
+    }
+    lastPoint = point;
+    document.querySelectorAll('.box .buy').forEach(function (bt) {
+      bt.classList.toggle('is-point', bt.parentNode.dataset.n === String(point));
     });
-    // Single OFF puck lives in the Don't Come bar during the come-out roll
-    var offPuck = document.getElementById('off-puck');
-    if (offPuck) offPuck.classList.toggle('hidden', point !== null);
-    _previousPoint = point;
+
+    // static spots
+    document.querySelectorAll('#felt .spot[data-spot]').forEach(function (s) {
+      var spot = s.dataset.spot;
+      var cs = s.querySelector(':scope > .cs, :scope > .lrow > .cs');
+      var amount, check;
+      if (spot === 'horn') {
+        amount = 0;
+        check = game.canPlace('horn-2');
+      } else {
+        amount = spotAmount(spot);
+        check = game.canPlace(spot);
+      }
+      s.classList.toggle('dim', !check.valid);
+      s.classList.toggle('has-bet', amount > 0);
+      if (cs) setChip(cs, amount, spot, amount > 0 && spot !== 'horn' && !game.isWorking(spot));
+    });
+
+    // don't pass odds rides in the don't pass bar
+    var dpo = document.querySelector('[data-sub="dont-pass-odds"]');
+    var dpoAmt = sumOf('dont-pass-odds');
+    dpo.innerHTML = '';
+    if (dpoAmt > 0) dpo.appendChild(makeChip(dpoAmt, 'dont-pass-odds', false, true));
+
+    // traveled come / don't come with their odds
+    POINTS.forEach(function (n) {
+      var box = document.querySelector('.box[data-n="' + n + '"]');
+      var ct = box.querySelector('.come-t'), dt = box.querySelector('.dc-t');
+      ct.innerHTML = ''; dt.innerHTML = '';
+      var ca = sumOf('come', n), co = sumOf('come-odds', n), da = sumOf('dont-come', n), dco = sumOf('dont-come-odds', n);
+      if (ca > 0) ct.appendChild(makeChip(ca, 'come@' + n, false));
+      if (co > 0) ct.appendChild(makeChip(co, 'come-odds@' + n, !game.isWorking('come-odds'), true));
+      if (da > 0) dt.appendChild(makeChip(da, 'dont-come@' + n, false));
+      if (dco > 0) dt.appendChild(makeChip(dco, 'dont-come-odds@' + n, false, true));
+      var lanes = (ca + co > 0 ? 1 : 0) + (da + dco > 0 ? 1 : 0);
+      box.classList.toggle('lane1', lanes === 1);
+      box.classList.toggle('lane2', lanes === 2);
+    });
+
+    renderBonus(b);
+    renderButtons();
+    if (!$('menu').hidden) renderMenu();
   }
 
-  function renderBets() {
-    var bets = game.getBets();
-    var keys = Object.keys(bets);
-    var totalWager = 0;
+  function makeChip(amount, spot, off, odds) {
+    var c = el('span', 'chip ' + chipClass(amount) + (off ? ' is-off' : '') + (odds ? ' odds-chip' : ''));
+    var lbl = chipLabel(amount);
+    if (lbl.length >= 4) c.classList.add('small-text');
+    c.innerHTML = '<b>' + lbl + '</b>' + (off ? '<i class="off">OFF</i>' : '');
+    if (spot) c.dataset.spot = spot;
+    c.dataset.amt = amount;
+    return c;
+  }
 
-    if (keys.length === 0) {
-      dom.betsList.innerHTML = '<p class="no-bets">No active bets</p>';
-      dom.totalWagered.textContent = '$0';
+  function setChip(cs, amount, spot, off) {
+    var cur = cs.firstChild;
+    if (!amount) { if (cur) cs.innerHTML = ''; return; }
+    if (cur && cur.dataset.amt === String(amount) && cur.classList.contains('is-off') === !!off) return;
+    cs.innerHTML = '';
+    var odds = spot === 'pass-odds';
+    cs.appendChild(makeChip(amount, null, off, odds));
+  }
+
+  function renderBonus(b) {
+    var small = b.small && b.small[0], tall = b.tall && b.tall[0], all = b.all && b.all[0];
+    document.querySelectorAll('[data-pips] b').forEach(function (p) {
+      var n = parseInt(p.dataset.n, 10);
+      var src = n < 7 ? small : tall;
+      var hit = (src && src.need.indexOf(n) === -1) || (all && all.need.indexOf(n) === -1);
+      p.classList.toggle('hit', !!hit);
+    });
+    var cnt = $('all-count');
+    if (all) {
+      cnt.textContent = (10 - all.need.length) + ' of 10';
+      cnt.classList.add('active');
+    } else {
+      cnt.textContent = '2–12';
+      cnt.classList.remove('active');
+    }
+  }
+
+  function toggleState() {
+    // 'none' | 'on' (all working) | 'off' (all off) | 'mixed'
+    var b = bets(), on = 0, off = 0;
+    Object.keys(b).forEach(function (t) {
+      if (!TOGGLEABLE.test(t)) return;
+      b[t].forEach(function (w) { if (w.working) on++; else off++; });
+    });
+    if (!on && !off) return 'none';
+    return off === 0 ? 'on' : (on === 0 ? 'off' : 'mixed');
+  }
+
+  function renderButtons() {
+    var st = toggleState();
+    var btn = $('btn-bets');
+    btn.classList.toggle('is-off', st === 'off');
+    btn.classList.toggle('is-mixed', st === 'mixed');
+    btn.setAttribute('aria-pressed', st === 'off' ? 'false' : st === 'mixed' ? 'mixed' : 'true');
+    $('bets-state').textContent = st === 'off' ? 'Bets Off' : st === 'mixed' ? 'Some Off' : 'Bets On';
+    var bal = game.getBalance();
+    document.querySelectorAll('.tchip').forEach(function (t) {
+      var v = parseInt(t.dataset.v, 10);
+      t.classList.toggle('sel', v === ui.chip);
+      t.classList.toggle('poor', v > bal);
+      t.setAttribute('aria-pressed', v === ui.chip ? 'true' : 'false');
+    });
+  }
+
+  // ===================================================================
+  // Toasts & effects
+  // ===================================================================
+  function toast(msg, kind) {
+    var box = $('toasts');
+    var t = el('div', 'toast' + (kind ? ' ' + kind : ''));
+    t.textContent = msg;
+    box.appendChild(t);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(function () {
+      t.classList.add('out');
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 260);
+    }, kind === 'warn' ? 2600 : 2200);
+  }
+
+  function floatText(target, text, neg) {
+    if (!target) return;
+    var r = target.getBoundingClientRect();
+    var f = el('div', 'float' + (neg ? ' neg' : ''));
+    f.textContent = text;
+    f.style.left = (r.left + r.width / 2) + 'px';
+    f.style.top = (r.top + r.height / 2) + 'px';
+    dom.fx.appendChild(f);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1300);
+  }
+
+  function restart(node, cls) {
+    if (!node) return;
+    node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls);
+    setTimeout(function () { node.classList.remove(cls); }, 950);
+  }
+
+  // ===================================================================
+  // Dice
+  // ===================================================================
+  var FACE = { 1: [0, 0], 2: [90, 0], 3: [0, -90], 4: [0, 90], 5: [-90, 0], 6: [0, 180] };
+
+  function setDie(k, n, tumble) {
+    var cube = (k === 0 ? $('die1') : $('die2')).firstChild;
+    var s = ui.spin[k], f = FACE[n];
+    if (tumble && !reduceMotion.matches) {
+      var dir = Math.random() < 0.5 ? 1 : -1;
+      s.x = f[0] + 360 * Math.ceil((s.x + 540 - f[0]) / 360);
+      s.y = f[1] + 360 * (Math.round(s.y / 360) + dir * (1 + Math.round(Math.random())));
+    } else {
+      s.x = f[0] + 360 * Math.round((s.x - f[0]) / 360);
+      s.y = f[1] + 360 * Math.round((s.y - f[1]) / 360);
+    }
+    var z = tumble ? (Math.random() * 16 - 8).toFixed(1) : 0;
+    cube.style.transform = 'rotateZ(' + z + 'deg) rotateX(' + s.x + 'deg) rotateY(' + s.y + 'deg)';
+  }
+
+  function tumble(d1, d2, done) {
+    if (reduceMotion.matches) {
+      setDie(0, d1, false); setDie(1, d2, false);
+      setTimeout(done, 180);
       return;
     }
-
-    var html = '';
-    keys.forEach(function (type) {
-      bets[type].forEach(function (b) {
-        var label = formatBetName(type);
-        var pointInfo = b.point !== null ? ' (pt: ' + b.point + ')' : '';
-        html += '<div class="bet-tag">'
-          + '<span class="bet-tag-name">' + label + pointInfo + '</span>'
-          + '<span class="bet-tag-amount">' + formatCurrency(b.amount) + '</span>'
-          + '</div>';
-        totalWager += b.amount;
-      });
-    });
-    dom.betsList.innerHTML = html;
-    dom.totalWagered.textContent = formatCurrency(totalWager);
+    restart($('dome'), 'shake');
+    restart($('die1'), 'hop');
+    restart($('die2'), 'hop');
+    var cubes = document.querySelectorAll('.cube');
+    cubes.forEach(function (c) { c.classList.remove('settled'); });
+    setDie(0, d1, true); setDie(1, d2, true);
+    setTimeout(function () {
+      // land exactly on the result even if the browser throttled the transition
+      cubes.forEach(function (c) { c.classList.add('settled'); });
+      done();
+    }, TUMBLE_MS);
   }
 
-  function appendChip(stackEl, total, extraClass) {
-    if (!stackEl || total <= 0) return;
-    var chip = document.createElement('div');
-    chip.className = 'chip ' + getChipClass(total) + (extraClass ? ' ' + extraClass : '');
-    chip.textContent = formatChipLabel(total);
-    stackEl.appendChild(chip);
+  function rollKind(d) {
+    if (d.sum === 7) return 'seven';
+    if (d.sum === 2 || d.sum === 3 || d.sum === 11 || d.sum === 12) return 'craps';
+    if (d.die1 === d.die2) return 'hard';
+    return 'other';
   }
 
-  // Come / Don't Come bets that have traveled to a point render in the
-  // corresponding number box; un-pointed ones stay in the COME / DC bar.
-  function renderTravelingChips(arr, baseId, ptPrefix, extraClass) {
-    if (!arr) return;
-    var flat = 0;
-    var byPoint = {};
-    arr.forEach(function (b) {
-      if (b.point == null) flat += b.amount;
-      else byPoint[b.point] = (byPoint[b.point] || 0) + b.amount;
-    });
-    appendChip(document.getElementById(baseId), flat, extraClass);
-    Object.keys(byPoint).forEach(function (pt) {
-      appendChip(document.getElementById(ptPrefix + pt), byPoint[pt], extraClass);
-    });
+  function pushStrip(d) {
+    var strip = $('roll-strip');
+    var li = el('li', 'rchip ' + rollKind(d) + ' new');
+    li.textContent = d.sum;
+    li.title = d.die1 + ' + ' + d.die2;
+    li.setAttribute('aria-label', d.sum + ' (' + d.die1 + ' and ' + d.die2 + ')');
+    strip.insertBefore(li, strip.firstChild);
+    while (strip.children.length > 18) strip.removeChild(strip.lastChild);
   }
 
-  // Light up each bonus number as it is collected (before a 7). When no bet is
-  // active the numbers show neutral.
-  function renderAtsHits(bets) {
-    // ALL no longer lists its own numbers — its progress shows via SMALL + TALL.
-    ['small', 'tall'].forEach(function (t) {
-      var container = document.getElementById('ats-nums-' + t);
-      if (!container) return;
-      var arr = bets[t];
-      var active = !!(arr && arr.length);
-      var need = active && arr[0].need ? arr[0].need : null;
-      var btn = container.closest('.ats-bet');
-      if (btn) btn.classList.toggle('ats-active', active);
-      container.querySelectorAll('.ats-n').forEach(function (sp) {
-        var num = parseInt(sp.dataset.num, 10);
-        var hit = active && need && need.indexOf(num) === -1;
-        sp.classList.toggle('hit', hit);
-      });
-    });
+  function caption(res) {
+    var d = res.dice, o = res.outcome;
+    if (o === 'natural') return [d.sum === 7 ? 'Winner 7' : 'Yo 11', 'good'];
+    if (o === 'craps') return ['Craps ' + d.sum, 'bad'];
+    if (o === 'point-set') return ['Point is ' + d.sum, 'point'];
+    if (o === 'point-hit') return ['Point made!', 'good'];
+    if (o === 'seven-out') return ['Seven out', 'bad'];
+    if (d.die1 === d.die2 && [4, 6, 8, 10].indexOf(d.sum) !== -1) return ['Hard ' + d.sum, ''];
+    if ([4, 6, 8, 10].indexOf(d.sum) !== -1) return ['Easy ' + d.sum, ''];
+    var nick = { 2: 'Aces', 3: 'Ace-Deuce', 11: 'Yo 11', 12: 'Boxcars' }[d.sum];
+    if (nick) return [nick, ''];
+    return ['No decision', ''];
   }
 
-  function renderChipStacks() {
-    document.querySelectorAll('.chip-stack, .come-chip-spot, .dc-chip-spot').forEach(function (stack) {
-      stack.innerHTML = '';
-    });
-
-    var bets = game.getBets();
-    Object.keys(bets).forEach(function (type) {
-      // come / dont-come (travel to boxes) and come-odds (per point) handled below
-      if (type === 'come' || type === 'dont-come' || type === 'come-odds') return;
-      var total = 0;
-      var off = false;
-      bets[type].forEach(function (b) { total += b.amount; if (b.working === false) off = true; });
-      var cls = type === 'pass-odds' ? 'odds-chip' : (off ? 'off' : null);
-      appendChip(document.getElementById('chips-' + type), total, cls);
-    });
-
-    renderTravelingChips(bets['come'], 'chips-come', 'chips-come-pt-', 'come-chip');
-    renderTravelingChips(bets['dont-come'], 'chips-dont-come', 'chips-dc-pt-', 'dc-chip');
-    // Come odds sit in the same box as their come point, with a cyan ring
-    renderTravelingChips(bets['come-odds'], null, 'chips-come-pt-', 'odds-chip');
-
-    // Horn is a board shortcut for 4 separate horn bets — show the combined total
-    var hornTotal = 0;
-    HORN_GROUP.forEach(function (p) {
-      (bets[p] || []).forEach(function (b) { hornTotal += b.amount; });
-    });
-    appendChip(document.getElementById('chips-horn'), hornTotal);
-
-    renderAtsHits(bets);
-
-    Object.keys(SPLIT_BET_MAP).forEach(function (splitKey) {
-      var parts = SPLIT_BET_MAP[splitKey];
-      var zone = document.querySelector('.split-zone[data-bet="' + splitKey + '"]');
-      if (!zone) return;
-      var hasBet = (bets[parts[0]] && bets[parts[0]].length > 0) ||
-                   (bets[parts[1]] && bets[parts[1]].length > 0);
-      zone.classList.toggle('has-bet', hasBet);
-    });
+  // ===================================================================
+  // Roll flow
+  // ===================================================================
+  function spotEl(betType, point) {
+    var sel = (POINTED[betType] && point != null) ? betType + '@' + point : betType;
+    if (betType === 'dont-pass-odds') return document.querySelector('[data-sub="dont-pass-odds"] .chip') || document.querySelector('[data-spot="dont-pass"]');
+    var node = document.querySelector('[data-spot="' + sel + '"]');
+    return node;
+  }
+  function chipIn(node) {
+    if (!node) return null;
+    if (node.classList.contains('chip')) return node;
+    return node.querySelector(':scope > .cs > .chip, :scope > .lrow > .cs > .chip');
   }
 
-  function renderDice(d1, d2) {
-    dom.die1.querySelector('.die-face').dataset.value = d1;
-    dom.die2.querySelector('.die-face').dataset.value = d2;
-    dom.diceTotal.textContent = d1 + d2;
+  function doRoll() {
+    if (ui.rolling) return;
+    closePopover();
+    ui.rolling = true;
+    document.body.classList.add('rolling');
+    var flatComeBefore = sumOf('come', null);
+    var res = game.roll();
+    Sound.play('dice');
+    $('dice-caption').textContent = 'Rolling…';
+    $('dice-caption').className = 'caption';
+    $('dice-total').textContent = '–';
+    tumble(res.dice.die1, res.dice.die2, function () { settle(res, flatComeBefore); });
   }
 
-  // Chip color palettes keyed by roll type
-  var CHIP_STYLES = {
-    seven: { bg: '#992020', border: '#ff5555', glow: 'rgba(255,85,85,0.55)' },
-    hard:  { bg: '#1a6b1a', border: '#44dd44', glow: 'rgba(68,221,68,0.55)' },
-    craps: { bg: '#5c1a8e', border: '#bb55ff', glow: 'rgba(187,85,255,0.55)' },
-    place: { bg: '#4a4a6a', border: '#8888bb', glow: null }
-  };
+  function settle(res, flatComeBefore) {
+    var d = res.dice;
+    $('dice-total').textContent = d.sum;
+    var cap = caption(res);
+    $('dice-caption').textContent = cap[0];
+    $('dice-caption').className = 'caption ' + cap[1];
+    pushStrip(d);
 
-  function getDiceChipType(die1, die2, sum) {
-    if (sum === 7)                                         return 'seven';
-    if (sum === 2 || sum === 3 || sum === 11 || sum === 12) return 'craps';
-    if (die1 === die2)                                     return 'hard';
-    return 'place';
-  }
+    // WIN meter
+    var w = dom.win;
+    w.classList.remove('pos', 'neg', 'zero');
+    var resolvedAny = res.resolved.wins.length + res.resolved.losses.length > 0;
+    if (res.net > 0) { w.textContent = '+' + money(res.net); w.classList.add('pos'); }
+    else if (res.net < 0) { w.textContent = money(res.net); w.classList.add('neg'); }
+    else { w.textContent = resolvedAny ? '$0' : '—'; w.classList.add('zero'); }
+    restart(w, 'bump');
+    dom.credit.textContent = money(game.getBalance(), true);
+    dom.bet.textContent = money(game.getTotalAtRisk());
 
-  function addDiceHistoryChip(die1, die2, sum) {
-    if (!dom.diceRollHistory) return;
+    // flashes, floating amounts, departing chips
+    var winSpots = {};
+    res.resolved.wins.forEach(function (x) {
+      var node = spotEl(x.betType, x.point);
+      var spot = node && node.classList.contains('chip') ? node.closest('.spot') : node;
+      restart(spot, 'flash-win');
+      var key = x.betType + '@' + (x.point || '');
+      winSpots[key] = (winSpots[key] || 0) + x.profit;
+      if (!x.stays) { var ch = chipIn(node); if (ch) ch.classList.add('collect'); }
+    });
+    Object.keys(winSpots).forEach(function (k) {
+      var parts = k.split('@');
+      floatText(spotEl(parts[0], parts[1] ? parseInt(parts[1], 10) : null), '+' + money(winSpots[k]));
+    });
+    var lossSpots = {};
+    res.resolved.losses.forEach(function (x) {
+      var node = spotEl(x.betType, x.point);
+      var spot = node && node.classList.contains('chip') ? node.closest('.spot') : node;
+      restart(spot, 'flash-lose');
+      var ch = chipIn(node); if (ch) ch.classList.add('leave');
+      lossSpots[x.betType + '@' + (x.point || '')] = node;
+    });
+    Object.keys(lossSpots).forEach(function (k) {
+      var parts = k.split('@');
+      floatText(lossSpots[k], money(-sumLoss(res, parts[0], parts[1])), true);
+    });
 
-    var type = getDiceChipType(die1, die2, sum);
-    var pal  = CHIP_STYLES[type];
+    if (res.net > 0) Sound.play('win');
+    else if (res.resolved.losses.length) Sound.play('lose');
 
-    var chip = document.createElement('div');
-    chip.title = die1 + ' + ' + die2 + ' = ' + sum;
-    chip.textContent = sum;
-
-    chip.style.cssText = [
-      'flex-shrink:0',
-      'width:26px',
-      'height:26px',
-      'border-radius:5px',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'font-size:0.82rem',
-      'font-weight:bold',
-      'color:#fff',
-      'text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000',
-      'background:' + pal.bg,
-      'border:2px solid ' + pal.border,
-      'box-shadow:0 1px 4px rgba(0,0,0,0.6)' + (pal.glow ? ',0 0 7px ' + pal.glow : ''),
-      'cursor:default'
-    ].join(';');
-
-    dom.diceRollHistory.insertBefore(chip, dom.diceRollHistory.firstChild);
-
-    while (dom.diceRollHistory.children.length > 20) {
-      dom.diceRollHistory.removeChild(dom.diceRollHistory.lastChild);
+    // returned money & pushes
+    res.returned.forEach(function (r) {
+      toast(name(r.betType) + ' returned (' + money(r.amount) + ') — ' + res.point + ' is the point.');
+    });
+    res.resolved.pushes.forEach(function (p) {
+      if (p.returned) toast(name(p.betType, p.point) + ' returned (' + money(p.amount) + ') — odds are off on the come-out.');
+      else if (p.betType === 'dont-pass' || p.betType === 'dont-come') toast(name(p.betType) + ' pushes on 12 (bar).');
+    });
+    var trav = res.outcome !== 'natural' && res.outcome !== 'craps' && flatComeBefore > 0 && [4, 5, 6, 8, 9, 10].indexOf(d.sum) !== -1;
+    if (trav && !(d.sum === 7)) {
+      // a flat come bet traveled to the number just rolled
+      if (game.getOddsInfo('come-odds', d.sum)) ui.offers.push({ kind: 'come', point: d.sum });
     }
-  }
+    if (res.outcome === 'point-set' && sumOf('pass') > 0) ui.offers.unshift({ kind: 'pass' });
 
-  function addHistoryItem(diceData, outcome) {
-    var placeholder = dom.historyList.querySelector('.no-history');
-    if (placeholder) placeholder.remove();
-
-    var cssClass = 'neutral';
-    if (outcome === Outcome.NATURAL || outcome === Outcome.POINT_HIT) cssClass = 'win';
-    else if (outcome === Outcome.CRAPS || outcome === Outcome.SEVEN_OUT) cssClass = 'loss';
-    else if (outcome === Outcome.POINT_SET) cssClass = 'point-set';
-
-    var item = document.createElement('span');
-    item.className = 'history-item ' + cssClass;
-    item.textContent = diceData.sum + ' (' + diceData.die1 + '+' + diceData.die2 + ')';
-    item.title = outcome;
-    dom.historyList.insertBefore(item, dom.historyList.firstChild);
-
-    while (dom.historyList.children.length > 200) {
-      dom.historyList.removeChild(dom.historyList.lastChild);
-    }
-  }
-
-  function setMessage(msg, type) {
-    dom.message.textContent = msg;
-    dom.message.style.color = type === 'error' ? 'var(--danger)'
-      : type === 'success' ? 'var(--success)'
-      : 'var(--text-light)';
-  }
-
-  // Winnings (profit) of a resolved win. Standing bets (pass/big/buy/hardway)
-  // carry an explicit `profit`; bets that return the stake report it via payout.
-  function winProfit(w) {
-    return (w.profit != null) ? w.profit : (w.payout - w.amount);
-  }
-
-  function addBettingHistoryEntry(rollNum, dice, resolved) {
-    if (resolved.wins.length === 0 && resolved.losses.length === 0 && resolved.pushes.length === 0) {
-      return;
-    }
-
-    var placeholder = dom.bettingHistoryList.querySelector('.no-history');
-    if (placeholder) placeholder.remove();
-
-    var parts = [];
-    resolved.wins.forEach(function (w) {
-      parts.push(formatBetName(w.betType) + ' +' + formatCurrency(winProfit(w)));
-    });
-    resolved.losses.forEach(function (l) {
-      parts.push(formatBetName(l.betType) + ' -' + formatCurrency(l.amount));
-    });
-    resolved.pushes.forEach(function (p) {
-      parts.push(formatBetName(p.betType) + ' push');
-    });
-
-    var netWins = 0;
-    resolved.wins.forEach(function (w) { netWins += winProfit(w); });
-    resolved.losses.forEach(function (l) { netWins -= l.amount; });
-
-    var item = document.createElement('div');
-    item.className = 'betting-history-item ' + (netWins > 0 ? 'win' : netWins < 0 ? 'loss' : 'push');
-    item.innerHTML = '<span class="history-bet-detail">' + parts.join(', ') + '</span>'
-      + '<span class="history-bet-result">' + formatCurrency(netWins) + '</span>';
-    dom.bettingHistoryList.insertBefore(item, dom.bettingHistoryList.firstChild);
-
-    while (dom.bettingHistoryList.children.length > 50) {
-      dom.bettingHistoryList.removeChild(dom.bettingHistoryList.lastChild);
-    }
-  }
-
-  // ---- Container mapping for field-level flashes ----
-  function getFlashContainer(betType) {
-    if (betType === 'pass' || betType === 'pass-odds') {
-      return document.querySelector('.pass-area');
-    }
-    if (betType === 'dont-pass' || betType === 'dont-pass-odds') {
-      return document.querySelector('.dont-pass-area');
-    }
-    if (betType === 'come' || betType === 'come-odds') {
-      return document.querySelector('.come-area');
-    }
-    if (betType === 'dont-come' || betType === 'dont-come-odds') {
-      return document.querySelector('.dont-come-bar');
-    }
-    if (betType === 'field') {
-      return document.querySelector('.field-area');
-    }
-    var placeMatch = betType.match(/^(?:place|buy|lay)-(\d+)$/);
-    if (placeMatch) {
-      return document.querySelector('.number-box[data-number="' + placeMatch[1] + '"]');
-    }
-    if (betType === 'put') {
-      return document.querySelector('.pass-area');
-    }
-    if (betType === 'big-6' || betType === 'big-8') {
-      return document.querySelector('.big-bets');
-    }
-    if (/^(any-seven|any-craps|hard-|horn-)/.test(betType)) {
-      return document.querySelector('.prop-bet[data-bet="' + betType + '"]') ||
-             document.querySelector('[data-bet="' + betType + '"]');
-    }
-    if (betType.indexOf('split-') === 0) {
-      return document.querySelector('.split-zone[data-bet="' + betType + '"]');
-    }
-    return document.querySelector('[data-bet="' + betType + '"]');
-  }
-
-  function applyFlash(element, className) {
-    if (!element) return;
-    element.classList.remove(className);
-    void element.offsetWidth;
-    element.classList.add(className);
-    element.addEventListener('animationend', function handler() {
-      element.classList.remove(className);
-      element.removeEventListener('animationend', handler);
-    });
-  }
-
-  function flashBetAreas(resolved) {
-    resolved.wins.forEach(function (w) {
-      var container = getFlashContainer(w.betType);
-      applyFlash(container, 'flash-field-win');
-      createFlyingChip(w.betType, winProfit(w), true);
-    });
-    resolved.losses.forEach(function (l) {
-      var container = getFlashContainer(l.betType);
-      applyFlash(container, 'flash-field-loss');
-      createFlyingChip(l.betType, l.amount, false);
-    });
-  }
-
-  function buildResultSummary(resolved) {
-    var winTotals = {}, lossTotals = {}, pushTypes = {};
-
-    resolved.wins.forEach(function(w) {
-      winTotals[w.betType] = (winTotals[w.betType] || 0) + winProfit(w);
-    });
-    resolved.losses.forEach(function(l) {
-      lossTotals[l.betType] = (lossTotals[l.betType] || 0) + l.amount;
-    });
-    resolved.pushes.forEach(function(p) {
-      pushTypes[p.betType] = true;
-    });
-
-    var parts = [];
-    Object.keys(winTotals).forEach(function(t) {
-      parts.push(formatBetName(t) + ' wins +' + formatCurrency(winTotals[t]));
-    });
-    Object.keys(lossTotals).forEach(function(t) {
-      parts.push(formatBetName(t) + ' loses -' + formatCurrency(lossTotals[t]));
-    });
-    Object.keys(pushTypes).forEach(function(t) {
-      parts.push(formatBetName(t) + ' push (returned)');
-    });
-
-    return parts.length > 0 ? ' | ' + parts.join(', ') : '';
-  }
-
-  // ---- Dice Roll Animation ----
-
-  function animateRoll(callback) {
-    isRolling = true;
-    dom.btnRoll.disabled = true;
-    dom.die1.classList.add('rolling');
-    dom.die2.classList.add('rolling');
-
-    var face1 = dom.die1.querySelector('.die-face');
-    var face2 = dom.die2.querySelector('.die-face');
-    var frames = 0;
-    var interval = setInterval(function () {
-      face1.dataset.value = Math.floor(Math.random() * 6) + 1;
-      face2.dataset.value = Math.floor(Math.random() * 6) + 1;
-      frames++;
-      if (frames > 8) clearInterval(interval);
-    }, 70);
+    logRoll(res);
 
     setTimeout(function () {
-      dom.die1.classList.remove('rolling');
-      dom.die2.classList.remove('rolling');
-      isRolling = false;
-      callback();
-    }, 650);
+      ui.rolling = false;
+      document.body.classList.remove('rolling');
+      render();
+      nextOffer();
+      if (!ui.odds) checkBroke();
+    }, reduceMotion.matches ? 150 : 560);
   }
 
-  // ---- Event Handlers ----
+  function sumLoss(res, type, point) {
+    var c = 0;
+    res.resolved.losses.forEach(function (l) {
+      if (l.betType === type && String(l.point || '') === String(point || '')) c += cents(l.amount);
+    });
+    return c / 100;
+  }
 
-  // ---- Long-press to toggle a standing bet working / off ----
-  var TOGGLEABLE = /^(place|buy|lay)-\d+$|^big-(6|8)$|^hard-\d+$/;
-  var LONG_PRESS_MS = 500;
-  var pressTimer = null;
-  var longPressFired = false;
+  function logRoll(res) {
+    var items = [];
+    res.resolved.wins.forEach(function (w) {
+      var t = name(w.betType, w.point) + ' +' + money(w.profit);
+      if (w.commission) t += ' (vig ' + money(w.commission) + ')';
+      if (w.stays) t += ', stays up';
+      items.push({ c: 'w', t: t });
+    });
+    res.resolved.losses.forEach(function (l) { items.push({ c: 'l', t: name(l.betType, l.point) + ' ' + money(-l.amount) }); });
+    res.resolved.pushes.forEach(function (p) { items.push({ c: '', t: name(p.betType, p.point) + (p.returned ? ' returned' : ' push') }); });
+    res.returned.forEach(function (r) { items.push({ c: '', t: name(r.betType) + ' returned ' + money(r.amount) }); });
+    ui.log.unshift({ n: game.getGameState().totalRolls, dice: res.dice, cap: caption(res)[0], net: res.net, items: items });
+    if (ui.log.length > 200) ui.log.length = 200;
+  }
 
-  function onBetToggle(area) {
-    var betType = area.dataset.bet;
-    if (!betType || isRolling) return;
-    if (!TOGGLEABLE.test(betType)) {
-      setMessage(formatBetName(betType) + " can't be turned off.", 'info');
-      return;
+  function checkBroke() {
+    if (game.getBalance() < 1 && game.getTotalAtRisk() === 0) {
+      confirmDialog('Out of credit', 'You have no credit left and nothing on the table. Start a new game with $1,000?', 'New Game', newGame);
     }
-    var bets = game.getBets();
-    if (!bets[betType] || !bets[betType].length) {
-      setMessage('No ' + formatBetName(betType) + ' bet to toggle.', 'info');
-      return;
+  }
+
+  // ===================================================================
+  // Placing bets
+  // ===================================================================
+  function reason(type) {
+    var phase = game.getPhase();
+    var bal = game.getBalance();
+    if (bal < 1) return 'Not enough credit.';
+    switch (type) {
+      case 'pass': return 'The Pass Line is locked while the point is on. Try Come or Put.';
+      case 'dont-pass': return "Don't Pass can only be bet on the come-out roll.";
+      case 'come': return 'Come bets open once a point is set. Bet the Pass Line now.';
+      case 'dont-come': return "Don't Come bets open once a point is set.";
+      case 'put': return 'Put bets need a point. Bet the Pass Line on the come-out.';
+      case 'small': case 'tall': case 'all':
+        return phase !== 'come-out'
+          ? 'Bonus bets open on the come-out roll.'
+          : 'Bonus bets open only before any number has rolled since the last 7.';
+      case 'pass-odds':
+        if (!sumOf('pass')) return 'Bet the Pass Line first, then take odds.';
+        if (phase !== 'point') return 'Odds open once a point is set.';
+        return 'Odds are already at the 2× maximum.';
     }
-    var res = game.toggleWorking(betType);
-    if (res.success) {
-      setMessage(formatBetName(betType) + (res.working ? ' is ON (working).' : ' is OFF (not working).'),
-        res.working ? 'success' : 'info');
+    var c = game.canPlace(type);
+    return c.message;
+  }
+
+  function placeAmount(type, amount) {
+    var bal = game.getBalance();
+    if (amount > bal) {
+      if (bal < 1) { toast('Not enough credit.', 'warn'); return false; }
+      toast('Not enough credit for a ' + money(amount) + ' chip (' + money(bal, true) + ' left).', 'warn');
+      return false;
+    }
+    var res = game.placeBet(type, amount);
+    if (!res.success) { toast(res.message, 'warn'); return false; }
+    return true;
+  }
+
+  function tapSpot(spot, node) {
+    if (ui.rolling) return;
+    var s = parseSpot(spot);
+    if (spot === 'pass-odds') return openOdds('pass');
+    if (spot === 'dont-pass-odds') return openOdds('dont-pass');
+    if (s.point != null && (s.type === 'come' || s.type === 'come-odds')) return openOdds('come', s.point);
+    if (s.point != null && (s.type === 'dont-come' || s.type === 'dont-come-odds')) return openOdds('dont-come', s.point);
+    if (spot === 'horn') return placeHorn();
+
+    var check = game.canPlace(spot);
+    if (!check.valid) { toast(reason(spot), 'warn'); Sound.play('tick'); return; }
+    if (placeAmount(spot, ui.chip)) {
+      Sound.play('chip');
+      render();
+      var ch = chipIn(node);
+      if (ch && !reduceMotion.matches) restart(ch, 'drop');
+    }
+  }
+
+  function placeHorn() {
+    var check = game.canPlace('horn-2');
+    if (!check.valid) { toast(reason('horn-2'), 'warn'); return; }
+    var per = Math.floor(ui.chip / 4);
+    if (per < 1) { toast('The Horn splits four ways — it needs at least $4. Pick a bigger chip.', 'warn'); return; }
+    if (per * 4 > game.getBalance()) { toast('Not enough credit for a ' + money(per * 4) + ' Horn.', 'warn'); return; }
+    HORN.forEach(function (h) { game.placeBet(h, per); });
+    Sound.play('chip');
+    var extra = ui.chip - per * 4;
+    toast('Horn: ' + money(per) + ' each on 2, 3, 11, 12' + (extra ? ' (' + money(per * 4) + ' total)' : '') + '.', 'good');
+    render();
+  }
+
+  function takeDown(spot) {
+    var refund = 0, ok = false, msg = '';
+    if (spot === 'horn') {
+      HORN.forEach(function (h) { if (game.canRemove(h)) { var r = game.removeBet(h); if (r.success) { ok = true; refund += r.refund; } } });
+    } else {
+      var s = parseSpot(spot);
+      var r = game.removeBet(s.type, s.point != null ? { point: s.point } : undefined);
+      ok = r.success; refund = r.refund; msg = r.message;
+    }
+    if (ok) {
+      Sound.play('chip');
+      toast(name(spot === 'horn' ? 'horn' : parseSpot(spot).type, parseSpot(spot).point) + ' taken down — ' + money(refund) + ' back.');
+    } else {
+      toast(msg || 'That bet is locked in play.', 'warn');
     }
     render();
   }
 
-  function onPressStart(e) {
-    var area = e.currentTarget;
-    longPressFired = false;
-    clearTimeout(pressTimer);
-    pressTimer = setTimeout(function () {
-      longPressFired = true;
-      onBetToggle(area);
-    }, LONG_PRESS_MS);
+  function toggleBet(type) {
+    var r = game.toggleWorking(type);
+    if (r.success) toast(name(type) + (r.working ? ' is ON.' : ' is OFF — it will not work until you turn it on.'));
+    else toast(r.message, 'warn');
+    render();
   }
 
-  function cancelPress() {
-    clearTimeout(pressTimer);
+  // ===================================================================
+  // Odds popup
+  // ===================================================================
+  function oddsCtx(kind, point) {
+    var type = kind + '-odds';
+    var info = game.getOddsInfo(type, point);
+    if (!info) return null;
+    var isDont = kind === 'dont-pass' || kind === 'dont-come';
+    var pointed = kind === 'come' || kind === 'dont-come';
+    // 1x / 2x are target LEVELS: a multiple of the flat (for lay odds, the lay
+    // that wins that multiple). Never above the engine's max.
+    var t1 = Math.min(info.max, isDont ? Math.floor(info.flat * info.ratio[1] / info.ratio[0] + 1e-9) : info.flat);
+    var t2 = info.max;
+    return {
+      kind: kind, type: type, isDont: isDont, info: info,
+      point: pointed ? point : game.getPoint(),
+      opts: pointed ? { point: point } : undefined,
+      targets: { 1: t1, 2: t2 },
+    };
   }
 
-  // ---- Drag a placed chip: drop on the controls to take it down (return),
-  //      or onto another bet spot to move it. Pointer events (touch + mouse). ----
-  var DRAG_THRESHOLD = 8;
-  var drag = null;
-  var dragHappened = false;
-
-  // Bets that can be picked up / moved (non-contract). Excludes pass/come/
-  // dont-pass/dont-come line bets and the point-box come chips.
-  function isReturnable(type) {
-    // Bonus bets (small/tall/all) ride until they win or a 7 — not takeable down.
-    return /^(place|buy|lay)-\d+$/.test(type) ||
-      /^big-(6|8)$/.test(type) ||
-      /^hard-\d+$/.test(type) ||
-      /^horn-\d+$/.test(type) ||
-      type === 'horn' || type === 'field' ||
-      type === 'any-seven' || type === 'any-craps' ||
-      type === 'pass-odds' || type === 'put';
+  function winFor(ctx, amount) {
+    var r = ctx.info.ratio;
+    return Math.floor(cents(amount) * r[0] / r[1]) / 100;
   }
 
-  // Valid engine bet types you can move a chip onto.
-  function isMoveTarget(type) {
-    return /^(place|buy|lay)-\d+$/.test(type) ||
-      /^big-(6|8)$/.test(type) ||
-      /^hard-\d+$/.test(type) ||
-      /^horn-\d+$/.test(type) ||
-      type === 'field' || type === 'any-seven' || type === 'any-craps';
+  function openOdds(kind, point) {
+    if (ui.rolling) return;
+    closePopover();
+    var ctx = oddsCtx(kind, point);
+    if (!ctx) {
+      if (kind === 'pass') toast(reason('pass-odds'), 'warn');
+      else if (kind === 'dont-pass') toast("Lay odds need a Don't Pass bet and a point.", 'warn');
+      else toast('No odds available on that bet right now.', 'warn');
+      return;
+    }
+    ui.odds = ctx;
+    var p = ctx.point, cur = ctx.info.current, fresh = cur === 0;
+    var title = fresh ? {
+      'pass': 'Point is ' + p + ' — take odds?',
+      'come': 'Come bet on ' + p + ' — take odds?',
+      'dont-pass': 'Lay odds against ' + p + '?',
+      'dont-come': "Lay odds on Don't Come " + p + '?',
+    }[kind] : {
+      'pass': 'Pass line on ' + p + ' — odds',
+      'come': 'Come bet on ' + p + ' — odds',
+      'dont-pass': "Don't Pass vs " + p + ' — lay odds',
+      'dont-come': "Don't Come " + p + ' — lay odds',
+    }[kind];
+    $('odds-title').textContent = title;
+    var r = ctx.info.ratio;
+    var sub = (ctx.isDont ? 'Lay pays ' : 'True odds pay ') + r[0] + ' to ' + r[1] + ' on ' + money(ctx.info.flat) + ' flat.';
+    sub += fresh ? '' : ' Your odds now: ' + money(cur) + '.';
+    if (ctx.kind === 'come' && game.getPhase() === 'come-out') sub += ' Come odds are off on the come-out roll.';
+    $('odds-sub').textContent = sub;
+
+    var btns = document.querySelectorAll('#odds .odds-opt');
+    var b1 = btns[0], b2 = btns[1], b0 = btns[2];
+    setOddsBtn(b1, ctx, 1);
+    setOddsBtn(b2, ctx, 2);
+    b0.querySelector('.o-amt').textContent = fresh ? 'flat only' : 'take down ' + money(cur);
+    b0.disabled = false;
+    $('odds-keep').hidden = fresh;
+    $('odds').hidden = false;
+    var first = !b2.disabled && !b2.classList.contains('current') ? b2 : b0;
+    try { first.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
   }
 
-  // Mark bet areas that hold a returnable bet so touch can drag them
-  // (touch-action: none) while empty areas keep normal page scrolling.
-  function updateDraggableAreas() {
-    document.querySelectorAll('.bet-area[data-bet]').forEach(function (area) {
-      area.classList.toggle('has-draggable', canDrag(area.dataset.bet));
-    });
-  }
-
-  function typeTotal(type) {
-    var bets = game.getBets();
-    var sum = 0;
-    if (type === 'horn') {
-      HORN_GROUP.forEach(function (p) { (bets[p] || []).forEach(function (b) { sum += b.amount; }); });
+  function setOddsBtn(btn, ctx, m) {
+    var amt = btn.querySelector('.o-amt');
+    var target = ctx.targets[m], cur = ctx.info.current, delta = target - cur;
+    btn.classList.remove('current');
+    btn.disabled = false;
+    var line = money(target) + ' · wins ' + money(winFor(ctx, target));
+    if (delta === 0) {
+      btn.classList.add('current');
+      amt.textContent = line + ' · current';
+    } else if (delta > 0) {
+      amt.textContent = line + (cur > 0 ? ' · +' + money(delta) : '');
+      if (delta > game.getBalance()) { btn.disabled = true; amt.textContent = line + ' · need ' + money(delta); }
     } else {
-      (bets[type] || []).forEach(function (b) { sum += b.amount; });
+      amt.textContent = line + ' · ' + money(-delta) + ' back';
     }
-    return sum;
   }
 
-  function takeDownType(type) {
-    var refund = 0;
-    if (type === 'horn') {
-      HORN_GROUP.forEach(function (p) { var r = game.removeBet(p); if (r.success) refund += r.refund; });
+  function chooseOdds(m) {
+    var ctx = ui.odds;
+    if (!ctx) return;
+    var cur = ctx.info.current;
+    if (m === 0) {
+      if (cur > 0) {
+        var r = game.removeBet(ctx.type, ctx.opts);
+        if (r.success) { Sound.play('chip'); toast(name(ctx.type, ctx.point) + ' taken down — ' + money(r.refund) + ' back.'); }
+        else toast(r.message, 'warn');
+      }
     } else {
-      var r = game.removeBet(type);
-      if (r.success) refund = r.refund;
+      var target = ctx.targets[m], delta = target - cur, res;
+      if (delta > 0) {
+        res = game.placeBet(ctx.type, delta, ctx.opts);
+      } else if (delta < 0) {
+        // lower the odds: take them down and put the new level back up
+        var rm = game.removeBet(ctx.type, ctx.opts);
+        res = rm.success ? game.placeBet(ctx.type, target, ctx.opts) : rm;
+      }
+      if (res) {
+        if (res.success) { Sound.play('chip'); toast(name(ctx.type, ctx.point) + ' set to ' + money(target) + ' (' + m + '×).', 'good'); }
+        else toast(res.message, 'warn');
+      }
     }
-    return refund;
+    closeOdds();
   }
 
-  // A bet can be dragged off if it has chips and isn't locked in play. Pass /
-  // Don't Pass are line bets, takeable down only during the come-out roll.
-  function canDrag(type) {
-    if (typeTotal(type) <= 0) return false;
-    if (type === 'pass' || type === 'dont-pass') return game.getPhase() === Phase.COME_OUT;
-    return isReturnable(type);
+  function closeOdds() {
+    if (!ui.odds) { $('odds').hidden = true; return; }
+    ui.odds = null;
+    $('odds').hidden = true;
+    render();
+    setTimeout(function () { nextOffer(); if (!ui.odds) checkBroke(); }, 0);
   }
 
-  function onChipPointerDown(e) {
-    dragHappened = false; // fresh gesture — never carry a stale suppress flag
-    if (isRolling || e.button === 2) return;
-    var area = e.target.closest ? e.target.closest('.bet-area[data-bet]') : null;
-    if (!area) return;
-    var type = area.dataset.bet;
-    if (!canDrag(type)) return; // nothing draggable here
-    drag = { type: type, amount: typeTotal(type), startX: e.clientX, startY: e.clientY, clone: null, active: false };
-    document.addEventListener('pointermove', onChipPointerMove, { passive: false });
-    document.addEventListener('pointerup', onChipPointerUp);
-    document.addEventListener('pointercancel', onChipPointerUp);
-  }
-
-  function onChipPointerMove(e) {
-    if (!drag) return;
-    if (!drag.active) {
-      if (Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD &&
-          Math.abs(e.clientY - drag.startY) < DRAG_THRESHOLD) return;
-      drag.active = true;
-      cancelPress(); // kill any pending long-press
-      var c = document.createElement('div');
-      c.className = 'chip ' + getChipClass(drag.amount) + ' drag-ghost';
-      c.textContent = formatChipLabel(drag.amount);
-      document.body.appendChild(c);
-      drag.clone = c;
-      document.body.classList.add('dragging-chip');
-    }
-    e.preventDefault();
-    drag.clone.style.left = e.clientX + 'px';
-    drag.clone.style.top = e.clientY + 'px';
-  }
-
-  function onChipPointerUp(e) {
-    document.removeEventListener('pointermove', onChipPointerMove);
-    document.removeEventListener('pointerup', onChipPointerUp);
-    document.removeEventListener('pointercancel', onChipPointerUp);
-    var d = drag;
-    drag = null;
-    document.body.classList.remove('dragging-chip');
-    if (!d) return;
-    if (d.clone) d.clone.remove();
-    if (!d.active) return; // never moved — treat as a normal tap
-
-    // Suppress the click that may fire on the source area right after a drag.
-    // Cleared on the next tick so it can never leak to a later, unrelated tap
-    // (which previously ate the next bet placed after a drag-to-take-down).
-    dragHappened = true;
-    setTimeout(function () { dragHappened = false; }, 0);
-
-    var el = document.elementFromPoint(e.clientX, e.clientY);
-    var sourceName = formatBetName(d.type);
-
-    // Dropped on the controls bar → take the bet down and return the chips
-    if (el && el.closest('.controls')) {
-      var refund = takeDownType(d.type);
-      setMessage(sourceName + ' taken down, ' + formatCurrency(refund) + ' returned.', 'info');
-      render();
-      return;
-    }
-
-    // Dropped on another bet spot → move it there
-    var area = el && el.closest('.bet-area[data-bet]');
-    var target = area ? area.dataset.bet : null;
-    if (target && target !== d.type && isMoveTarget(target)) {
-      var amt = d.amount;
-      takeDownType(d.type);
-      var res = game.placeBet(target, amt);
-      if (res.success) setMessage(sourceName + ' moved to ' + formatBetName(target) + '.', 'success');
-      else setMessage(res.message + ' — ' + sourceName + ' returned.', 'info');
-      render();
-      return;
-    }
-
-    render(); // dropped nowhere useful — leave the bet as-is
-  }
-
-  function onBetAreaClick(e) {
-    var area = e.currentTarget;
-    var betType = area.dataset.bet;
-    if (!betType || isRolling) return;
-    if (dragHappened) { dragHappened = false; return; } // a drag handled it
-    if (longPressFired) { longPressFired = false; return; } // long-press handled it
-
-    var amount = parseInt(dom.betAmount.value, 10);
-    if (!amount || amount <= 0) {
-      setMessage('Enter a valid bet amount.', 'error');
-      return;
-    }
-
-    // Horn: split the wager equally across 2 / 3 / 11 / 12
-    if (betType === 'horn') {
-      var per = Math.floor(amount / 4);
-      if (per <= 0) {
-        setMessage('Horn bet needs at least $4 (split 4 ways).', 'error');
+  function nextOffer() {
+    while (ui.offers.length && !ui.odds) {
+      var o = ui.offers.shift();
+      var ctx = oddsCtx(o.kind, o.point);
+      if (ctx && ctx.info.current === 0 && ctx.info.remaining >= 1 && game.getBalance() >= 1) {
+        openOdds(o.kind, o.point);
         return;
       }
-      if (per * 4 > game.getBalance()) {
-        setMessage('Insufficient balance for that horn bet.', 'error');
-        return;
-      }
-      HORN_GROUP.forEach(function (p) { game.placeBet(p, per); });
-      setMessage('Horn placed: $' + per + ' each on 2 / 3 / 11 / 12.', 'success');
-      render();
-      return;
     }
+  }
 
-    if (SPLIT_BET_MAP[betType]) {
-      var parts = SPLIT_BET_MAP[betType];
-      var half = Math.floor(amount / 2);
-      var remainder = amount - half;
-      if (half <= 0) {
-        setMessage('Split bet requires at least $2.', 'error');
-        return;
-      }
+  // ===================================================================
+  // Hold popover
+  // ===================================================================
+  function popoverItems(spot) {
+    var items = [];
+    var s = parseSpot(spot);
+    var amount = spotAmount(spot);
+    if (amount <= 0) return null;
+    var head = '', note = '';
+    var phase = game.getPhase();
 
-      var result1 = game.placeBet(parts[0], half);
-      var result2 = game.placeBet(parts[1], remainder);
-
-      if (result1.success && result2.success) {
-        setMessage('Split bet placed: ' + formatBetName(parts[0]) + ' $' + half
-          + ' + ' + formatBetName(parts[1]) + ' $' + remainder, 'success');
-        area.classList.add('has-bet');
+    if (spot === 'horn') {
+      head = 'Horn · ' + money(amount);
+      if (HORN.some(function (h) { return game.canRemove(h); })) items.push({ t: 'Take down ' + money(amount), f: function () { takeDown('horn'); }, cls: 'danger' });
+    } else {
+      var t = s.type, p = s.point;
+      head = name(t, p) + ' · ' + money(amount);
+      if (game.canRemove(t, p != null ? p : undefined)) {
+        items.push({ t: 'Take down', f: function () { takeDown(spot); }, cls: 'danger' });
       } else {
-        var errMsg = !result1.success ? result1.message : result2.message;
-        setMessage('Split bet error: ' + errMsg, 'error');
+        note = t === 'pass' ? 'Locked while the point is on.'
+          : t === 'come' ? 'Locked once it travels to a number.'
+          : (t === 'small' || t === 'tall' || t === 'all') ? 'Locked in play after a roll.'
+          : 'Locked in play.';
       }
-
-      render();
-      return;
-    }
-
-    var result = game.placeBet(betType, amount);
-    if (result.success) {
-      setMessage(result.message, 'success');
-    } else {
-      setMessage(result.message, 'error');
-    }
-    render();
-  }
-
-  // Player net worth = cash balance + everything currently at risk on the felt.
-  // The roll's true result is the change in net worth, which is correct
-  // regardless of whether a winning bet was paid-and-removed or left standing.
-  function netWorth() {
-    var bets = game.getBets();
-    var atRisk = 0;
-    Object.keys(bets).forEach(function (k) {
-      bets[k].forEach(function (b) { atRisk += b.amount; });
-    });
-    return game.getBalance() + atRisk;
-  }
-
-  function processRollResult(result, nwBefore) {
-    renderDice(result.dice.die1, result.dice.die2);
-    addDiceHistoryChip(result.dice.die1, result.dice.die2, result.dice.sum);
-
-    // Net dollar result of this roll, shown as a number next to the balance.
-    var net = (typeof nwBefore === 'number') ? (netWorth() - nwBefore) : 0;
-    if (net > 0) setMessage('+' + formatCurrency(net), 'success');
-    else if (net < 0) setMessage('-' + formatCurrency(-net), 'error');
-    else setMessage('–', 'info'); // no change
-
-    // A Place/Buy bet sitting on the new point was returned to the player.
-    if (result.returned && result.returned.length) {
-      var names = result.returned.map(function (r) { return formatBetName(r.betType); });
-      setMessage(names.join(', ') + ' returned', 'info');
-    }
-
-    addHistoryItem(result.dice, result.outcome);
-    addBettingHistoryEntry(game.getGameState().totalRolls, result.dice, result.resolved);
-    flashBetAreas(result.resolved);
-    render();
-  }
-
-  // ---- Take-odds popup (Bubble Craps style) ----
-  var pendingOdds = null; // { kind: 'pass'|'come', point, flat }
-
-  function oddsRatioText(point) {
-    var r = PayoutTable['odds_' + point];
-    return r ? r[0] + ':' + r[1] : '';
-  }
-
-  function showOddsPopup(kind, point, flat) {
-    if (!dom.oddsModal || !flat || flat <= 0) return;
-    pendingOdds = { kind: kind, point: point, flat: flat };
-    var ratio = PayoutTable['odds_' + point];
-    dom.oddsModalTitle.textContent =
-      (kind === 'pass' ? 'Point is ' + point : 'Come bet on ' + point) + ' — Take Odds?';
-    var win1 = ratio ? Math.floor(flat * ratio[0] / ratio[1]) : 0;
-    var win2 = ratio ? Math.floor(flat * 2 * ratio[0] / ratio[1]) : 0;
-    dom.oddsModalSub.innerHTML = 'True odds pay ' + oddsRatioText(point) + '.<br>'
-      + '1× risks ' + formatCurrency(flat) + ' to win ' + formatCurrency(win1) + ' • '
-      + '2× risks ' + formatCurrency(flat * 2) + ' to win ' + formatCurrency(win2);
-    dom.oddsOpt1x.innerHTML = '1×<span class="opt-amt">' + formatCurrency(flat) + '</span>';
-    dom.oddsOpt2x.innerHTML = '2×<span class="opt-amt">' + formatCurrency(flat * 2) + '</span>';
-    dom.oddsModal.classList.remove('hidden');
-  }
-
-  function closeOddsPopup() {
-    pendingOdds = null;
-    if (dom.oddsModal) dom.oddsModal.classList.add('hidden');
-  }
-
-  function applyOdds(multiple) {
-    if (!pendingOdds) return;
-    var amount = pendingOdds.flat * multiple;
-    var betType = pendingOdds.kind === 'pass' ? 'pass-odds' : 'come-odds';
-    var opts = pendingOdds.kind === 'come' ? { point: pendingOdds.point } : undefined;
-    var res = game.placeBet(betType, amount, opts);
-    setMessage(res.success ? formatBetName(betType) + ' ' + multiple + '× placed.' : res.message,
-      res.success ? 'success' : 'error');
-    closeOddsPopup();
-    render();
-  }
-
-  function maybePromptOdds(result, comeBefore) {
-    var bets = game.getBets();
-    // Pass point just established → offer pass odds
-    if (result.outcome === Outcome.POINT_SET && bets.pass && bets.pass.length) {
-      var flat = bets.pass.reduce(function (s, b) { return s + b.amount; }, 0);
-      showOddsPopup('pass', game.getPoint(), flat);
-      return;
-    }
-    // Find the come bet that just traveled to a number (present now with a
-    // point, but not in the pre-roll snapshot) and offer odds for its amount.
-    var afterPts = (bets.come || []).filter(function (b) { return b.point != null; });
-    var pool = comeBefore.slice();
-    var newBet = null;
-    for (var i = 0; i < afterPts.length; i++) {
-      var ap = afterPts[i];
-      var idx = -1;
-      for (var j = 0; j < pool.length; j++) {
-        if (pool[j].p === ap.point && pool[j].a === ap.amount) { idx = j; break; }
+      if (TOGGLEABLE.test(t)) {
+        var on = isOn(t);
+        items.push({ t: on ? 'Turn off' : 'Turn on', f: function () { toggleBet(t); } });
+        if (!game.isWorking(t) && on) note = 'Off on the come-out roll.';
       }
-      if (idx >= 0) pool.splice(idx, 1);
-      else { newBet = ap; break; }
+      if ((t === 'pass' || t === 'pass-odds') && phase === 'point') items.push({ t: 'Odds…', f: function () { openOdds('pass'); } });
+      if ((t === 'come' || t === 'come-odds') && p != null) items.push({ t: 'Odds…', f: function () { openOdds('come', p); } });
+      if ((t === 'dont-pass' || t === 'dont-pass-odds') && phase === 'point') items.push({ t: 'Lay odds…', f: function () { openOdds('dont-pass'); } });
+      if ((t === 'dont-come' || t === 'dont-come-odds') && p != null) items.push({ t: 'Lay odds…', f: function () { openOdds('dont-come', p); } });
+      if (t === 'come-odds' && phase === 'come-out') note = 'Come odds are off on the come-out.';
     }
-    if (newBet) {
-      // Base odds on the TOTAL come amount on this point (multiple come bets
-      // can stack onto the same number), not just the one that traveled.
-      var pt = newBet.point;
-      var pointTotal = afterPts.reduce(function (s, b) { return b.point === pt ? s + b.amount : s; }, 0);
-      showOddsPopup('come', pt, pointTotal);
-    }
+    items.push({ t: 'Cancel', f: function () {}, cls: 'cancel' });
+    return { head: head, note: note, items: items };
   }
 
-  function onRoll() {
-    if (isRolling) return;
-
-    var bets = game.getBets();
-    if (Object.keys(bets).length === 0) {
-      setMessage('Place at least one bet before rolling.', 'error');
-      return;
-    }
-
-    var comeBefore = (bets.come || []).map(function (b) { return { a: b.amount, p: b.point }; });
-    var nwBefore = netWorth();
-
-    animateRoll(function () {
-      var result = game.roll();
-      processRollResult(result, nwBefore);
-      maybePromptOdds(result, comeBefore);
+  function openPopover(spot, anchor) {
+    var model = popoverItems(spot);
+    if (!model) return false;
+    closePopover();
+    var pop = $('popover');
+    $('pop-head').innerHTML = '';
+    $('pop-head').appendChild(document.createTextNode(model.head));
+    if (model.note) { var sm = el('small'); sm.textContent = model.note; $('pop-head').appendChild(sm); }
+    var list = $('pop-items');
+    list.innerHTML = '';
+    model.items.forEach(function (it) {
+      var b = el('button', it.cls || '');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitem');
+      b.textContent = it.t;
+      b.addEventListener('click', function () { closePopover(); it.f(); });
+      list.appendChild(b);
     });
+    $('pop-backdrop').hidden = false;
+    pop.hidden = false;
+    // position near the anchor, inside the safe viewport
+    var r = anchor.getBoundingClientRect();
+    var pw = pop.offsetWidth, ph = pop.offsetHeight;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var cs = getComputedStyle(document.documentElement);
+    var st = parseFloat(cs.getPropertyValue('--safe-top')) || 0;
+    var sb = parseFloat(cs.getPropertyValue('--safe-bottom')) || 0;
+    var sl = parseFloat(cs.getPropertyValue('--safe-left')) || 0;
+    var sr = parseFloat(cs.getPropertyValue('--safe-right')) || 0;
+    var left = r.left + r.width / 2 - pw / 2;
+    left = Math.max(sl + 8, Math.min(left, vw - sr - pw - 8));
+    var top = r.top - ph - 8;
+    if (top < st + 8) top = r.bottom + 8;
+    if (top + ph > vh - sb - 8) top = Math.max(st + 8, vh - sb - ph - 8);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    ui.pop = { spot: spot };
+    var firstBtn = list.querySelector('button');
+    try { firstBtn.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    return true;
   }
 
-  function onUndo() {
-    if (isRolling) return;
-    var res = game.undoLastBet();
-    setMessage(
-      res.success ? 'Undid last bet, ' + formatCurrency(res.refund) + ' returned.' : res.message,
-      res.success ? 'info' : 'error'
-    );
-    render();
+  function closePopover() {
+    if (!ui.pop) return;
+    ui.pop = null;
+    $('popover').hidden = true;
+    $('pop-backdrop').hidden = true;
   }
 
-  function onRepeat() {
-    if (isRolling) return;
-    var res = game.repeatBets();
-    setMessage(res.message, res.success ? 'success' : 'info');
-    render();
+  // ===================================================================
+  // Gestures: tap · hold · drag-to-tray
+  // ===================================================================
+  function canDrag(spot) {
+    if (spotAmount(spot) <= 0) return false;
+    if (spot === 'horn') return HORN.some(function (h) { return game.canRemove(h); });
+    var s = parseSpot(spot);
+    return game.canRemove(s.type, s.point != null ? s.point : undefined);
   }
 
-  function onClearBets() {
-    if (isRolling) return;
-    var res = game.clearRemovableBets();
-    if (res.refund > 0) {
-      setMessage('Cleared bets, ' + formatCurrency(res.refund) + ' returned.', 'info');
-    } else {
-      setMessage('No removable bets — in-play bets stay.', 'info');
+  function onFeltDown(e) {
+    ui.lastPointerType = e.pointerType || 'mouse';
+    if (e.button > 0) return;
+    if (ui.gesture) endGesture();
+    var node = e.target.closest ? e.target.closest('[data-spot]') : null;
+    if (!node || ui.rolling) return;
+    var spot = node.dataset.spot;
+    var g = { id: e.pointerId, node: node, spot: spot, x: e.clientX, y: e.clientY, held: false, moved: false, drag: null, timer: 0 };
+    if (spotAmount(spot) > 0) {
+      g.timer = setTimeout(function () {
+        if (ui.gesture !== g || g.drag || g.moved) return;
+        g.held = true;
+        openPopover(spot, node);
+      }, HOLD_MS);
     }
-    closeOddsPopup();
-    render();
+    ui.gesture = g;
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
   }
 
-  function onChipSelect(e) {
-    var btn = e.currentTarget;
-    var value = parseInt(btn.dataset.value, 10);
-    selectedChipValue = value;
-    dom.betAmount.value = value;
-    dom.chipButtons.forEach(function (b) { b.classList.remove('selected'); });
-    btn.classList.add('selected');
-    updateChipCursor(value);
-  }
-
-  function onBetAmountChange() {
-    var val = parseInt(dom.betAmount.value, 10);
-    dom.chipButtons.forEach(function (b) {
-      b.classList.toggle('selected', parseInt(b.dataset.value, 10) === val);
-    });
-    selectedChipValue = val;
-    var denominations = [1, 5, 25, 100, 500];
-    var nearest = 25;
-    for (var i = denominations.length - 1; i >= 0; i--) {
-      if (val >= denominations[i]) { nearest = denominations[i]; break; }
+  function onMove(e) {
+    var g = ui.gesture;
+    if (!g || e.pointerId !== g.id) return;
+    var dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (!g.drag && !g.moved && !g.held && Math.sqrt(dx * dx + dy * dy) > DRAG_TOL) {
+      // a real slide: stop the hold timer; only a draggable bet turns into a drag
+      clearTimeout(g.timer);
+      if (canDrag(g.spot)) {
+        var amt = spotAmount(g.spot);
+        var ghost = makeChip(amt, null, false);
+        ghost.classList.add('ghost');
+        dom.fx.appendChild(ghost);
+        g.drag = ghost;
+        document.body.classList.add('dragging');
+        var src = chipIn(g.node);
+        if (src) src.style.opacity = '0.35';
+        g.src = src;
+      } else {
+        g.moved = true;
+      }
     }
-    updateChipCursor(nearest);
-  }
-
-  function onNewGame() {
-    if (isRolling) return;
-    closeOddsPopup();
-    game.reset();
-    dom.historyList.innerHTML = '<p class="no-history">No rolls yet</p>';
-    dom.bettingHistoryList.innerHTML = '<p class="no-history">No results yet</p>';
-    dom.diceRollHistory.innerHTML = '';
-    dom.diceTotal.textContent = '-';
-    dom.die1.querySelector('.die-face').dataset.value = 1;
-    dom.die2.querySelector('.die-face').dataset.value = 1;
-    setMessage('New game started. Place your bets!', 'info');
-    render();
-  }
-
-  function onBetAreaKeydown(e) {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (g.drag) {
       e.preventDefault();
-      onBetAreaClick(e);
+      g.drag.style.left = e.clientX + 'px';
+      g.drag.style.top = e.clientY + 'px';
+      dom.tray.classList.toggle('over', overTray(e.clientX, e.clientY));
     }
   }
 
-  // ---- Init ----
-  function init() {
-    dom.betAreas.forEach(function (area) {
-      area.addEventListener('click', onBetAreaClick);
-      area.addEventListener('keydown', onBetAreaKeydown);
-      // Long-press (hold) to toggle a standing bet working / off
-      area.addEventListener('mousedown', onPressStart);
-      area.addEventListener('mouseup', cancelPress);
-      area.addEventListener('mouseleave', cancelPress);
-      area.addEventListener('touchstart', onPressStart, { passive: true });
-      area.addEventListener('touchend', cancelPress);
-      area.addEventListener('touchmove', cancelPress, { passive: true });
-      area.addEventListener('touchcancel', cancelPress);
-      area.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-    });
+  function overTray(x, y) {
+    var r = dom.tray.getBoundingClientRect();
+    return x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 10 && y <= r.bottom + 6;
+  }
 
-    dom.btnRoll.addEventListener('click', onRoll);
-    if (dom.btnRepeat) dom.btnRepeat.addEventListener('click', onRepeat);
-    if (dom.btnUndo) dom.btnUndo.addEventListener('click', onUndo);
-    dom.btnClear.addEventListener('click', onClearBets);
-    dom.btnNewGame.addEventListener('click', onNewGame);
+  function onUp(e) {
+    var g = ui.gesture;
+    if (!g || e.pointerId !== g.id) return;
+    endGesture();
+    if (g.drag) {
+      if (overTray(e.clientX, e.clientY)) takeDown(g.spot);
+      else render();
+      return;
+    }
+    if (g.held) return;
+    // A press with no drag is a tap if it ends over the same spot, however much
+    // the finger wobbled on the way.
+    var over = document.elementFromPoint(e.clientX, e.clientY);
+    var overSpot = over && over.closest ? over.closest('[data-spot]') : null;
+    if (!overSpot || overSpot.dataset.spot !== g.spot) return;
+    tapSpot(g.spot, overSpot);
+  }
 
-    dom.chipButtons.forEach(function (btn) {
-      btn.addEventListener('click', onChipSelect);
-    });
-
-    dom.betAmount.addEventListener('input', onBetAmountChange);
-
-    // Drag a placed chip to take it down / move it (delegated; chips re-render)
-    var tableLayout = document.querySelector('.table-layout');
-    if (tableLayout) tableLayout.addEventListener('pointerdown', onChipPointerDown);
-
-    // Take-odds popup
-    if (dom.oddsOpt1x) dom.oddsOpt1x.addEventListener('click', function () { applyOdds(1); });
-    if (dom.oddsOpt2x) dom.oddsOpt2x.addEventListener('click', function () { applyOdds(2); });
-    if (dom.oddsOptNo) dom.oddsOptNo.addEventListener('click', closeOddsPopup);
-    if (dom.oddsModal) dom.oddsModal.addEventListener('click', function (e) {
-      if (e.target === dom.oddsModal) closeOddsPopup();
-    });
-
-    updateChipCursor(selectedChipValue);
+  function onCancel(e) {
+    var g = ui.gesture;
+    if (!g || e.pointerId !== g.id) return;
+    endGesture();
     render();
   }
 
-  // Boot
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  function endGesture() {
+    var g = ui.gesture;
+    ui.gesture = null;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onCancel);
+    if (!g) return;
+    clearTimeout(g.timer);
+    if (g.drag && g.drag.parentNode) g.drag.parentNode.removeChild(g.drag);
+    if (g.src) g.src.style.opacity = '';
+    document.body.classList.remove('dragging');
+    dom.tray.classList.remove('over');
   }
+
+  // keyboard: Enter/Space on a spot = tap; context-menu key / right-click = hold
+  function onFeltClick(e) {
+    if (e.detail !== 0) return; // pointer taps are handled by pointer events
+    var node = e.target.closest('[data-spot]');
+    if (node) tapSpot(node.dataset.spot, node);
+  }
+  function onFeltContext(e) {
+    e.preventDefault();
+    if (ui.lastPointerType === 'touch' || ui.lastPointerType === 'pen') return; // long-press handled by hold timer
+    var node = e.target.closest('[data-spot]');
+    if (!node || ui.rolling) return;
+    if (ui.gesture) endGesture();
+    if (!openPopover(node.dataset.spot, node)) toast('No bet here yet — tap to bet.');
+  }
+
+  // ===================================================================
+  // Buttons
+  // ===================================================================
+  function onRepeat() {
+    if (ui.rolling) return;
+    var r = game.repeatBets();
+    if (r.success) { Sound.play('chip'); toast(r.message.replace(/^Repeated/, 'Repeated'), 'good'); }
+    else toast(r.message, r.skipped ? 'warn' : '');
+    render();
+  }
+  function onUndo() {
+    if (ui.rolling) return;
+    var r = game.undoLastBet();
+    if (r.success) { Sound.play('chip'); toast('Undid ' + name(r.betType) + ' — ' + money(r.refund) + ' back.'); }
+    else toast('Nothing to undo since the last roll.', 'warn');
+    render();
+  }
+  function onClear() {
+    if (ui.rolling) return;
+    var r = game.clearRemovableBets();
+    if (r.refund > 0) { Sound.play('chip'); toast('Cleared ' + money(r.refund) + '. Bets in play stay up.'); }
+    else toast(game.getTotalAtRisk() > 0 ? 'Those bets are in play and stay up.' : 'Nothing to clear.', 'warn');
+    render();
+  }
+  function onBetsToggle() {
+    if (ui.rolling) return;
+    var st = toggleState();
+    if (st === 'none') { toast('No Place, Buy, Lay, Big or Hardway bets to turn off.', 'warn'); return; }
+    var on = st !== 'on'; // all on -> off; all off or mixed -> on
+    game.setAllWorking(on);
+    Sound.play('tick');
+    toast(on ? 'Bets are ON.' : 'Bets are OFF — Place, Buy, Lay, Big and Hardways will not work.');
+    render();
+  }
+  function onChip(e) {
+    var v = parseInt(e.currentTarget.dataset.v, 10);
+    ui.chip = v;
+    try { localStorage.setItem(STORE.chip, String(v)); } catch (err) { /* ignore */ }
+    Sound.play('chip');
+    renderButtons();
+  }
+
+  // ===================================================================
+  // Menu
+  // ===================================================================
+  function openMenu() {
+    closePopover();
+    renderMenu();
+    $('menu').hidden = false;
+    $('sheet-body').scrollTop = 0;
+  }
+  function closeMenu() { $('menu').hidden = true; }
+
+  function renderMenu() {
+    var b = bets(), list = $('menu-bets');
+    list.innerHTML = '';
+    var any = false;
+    Object.keys(b).forEach(function (t) {
+      b[t].forEach(function (w) {
+        any = true;
+        var li = el('li');
+        var nm = el('span');
+        nm.textContent = name(t, w.point);
+        if (!game.isWorking(t, w.point) || (t === 'come-odds' && game.getPhase() === 'come-out')) {
+          var st = el('span', 'st', 'OFF'); nm.appendChild(st);
+        }
+        if (w.need) { var nd = el('span', 'muted'); nd.textContent = ' · needs ' + w.need.join(' '); nm.appendChild(nd); }
+        var am = el('span');
+        am.textContent = money(w.amount);
+        li.appendChild(nm); li.appendChild(am);
+        list.appendChild(li);
+      });
+    });
+    if (!any) list.innerHTML = '<li class="empty">No bets on the table.</li>';
+    $('menu-atrisk').textContent = any ? money(game.getTotalAtRisk()) : '';
+
+    var rl = $('menu-rolls');
+    rl.innerHTML = '';
+    if (!ui.log.length) rl.innerHTML = '<li class="empty">No rolls yet.</li>';
+    ui.log.slice(0, 100).forEach(function (r) {
+      var li = el('li');
+      var top = el('div', 'rl-top');
+      top.innerHTML = '<span class="rl-n">#' + r.n + '</span>';
+      var rc = el('span', 'rchip ' + rollKind(r.dice));
+      rc.textContent = r.dice.sum;
+      top.appendChild(rc);
+      var out = el('span', 'rl-out');
+      out.textContent = r.dice.die1 + ' + ' + r.dice.die2 + ' · ' + r.cap;
+      top.appendChild(out);
+      var net = el('span', 'rl-net' + (r.net > 0 ? ' pos' : r.net < 0 ? ' neg' : ''));
+      net.textContent = r.net > 0 ? '+' + money(r.net) : r.net < 0 ? money(r.net) : '—';
+      top.appendChild(net);
+      li.appendChild(top);
+      if (r.items.length) {
+        var det = el('div', 'rl-det');
+        r.items.forEach(function (it, i) {
+          var sp = el('span', it.c);
+          sp.textContent = it.t;
+          det.appendChild(sp);
+          if (i < r.items.length - 1) det.appendChild(document.createTextNode(' · '));
+        });
+        li.appendChild(det);
+      }
+      rl.appendChild(li);
+    });
+
+    var sb = $('btn-sound');
+    sb.textContent = 'Sound: ' + (ui.sound ? 'On' : 'Off');
+    sb.setAttribute('aria-pressed', ui.sound ? 'true' : 'false');
+  }
+
+  function toggleSound(e) {
+    ui.sound = !ui.sound;
+    try { localStorage.setItem(STORE.sound, ui.sound ? '1' : '0'); } catch (err) { /* ignore */ }
+    Sound.unlock(e);
+    Sound.play('tick');
+    renderMenu();
+  }
+
+  // ===================================================================
+  // Dialogs / new game
+  // ===================================================================
+  var dlgOk = null;
+  function confirmDialog(title, text, okText, onOk) {
+    $('dlg-title').textContent = title;
+    $('dlg-text').textContent = text;
+    $('dlg-ok').textContent = okText || 'OK';
+    dlgOk = onOk;
+    $('dialog').hidden = false;
+    try { $('dlg-ok').focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+  }
+  function closeDialog() { $('dialog').hidden = true; dlgOk = null; }
+
+  function newGame() {
+    closeMenu(); closePopover();
+    ui.offers = [];
+    if (ui.odds) { ui.odds = null; $('odds').hidden = true; }
+    game.reset();
+    ui.log = [];
+    $('roll-strip').innerHTML = '';
+    $('dice-total').textContent = '–';
+    $('dice-caption').textContent = 'Place your bets';
+    $('dice-caption').className = 'caption';
+    dom.win.textContent = '—';
+    dom.win.className = 'm-val';
+    render();
+    toast('New game — ' + money(game.getBalance()) + ' credit.', 'good');
+  }
+
+  // ===================================================================
+  // Safe-area test override (?debug=1&safe=1)
+  // ===================================================================
+  function applySafeOverride() {
+    // The iPhone insets per orientation live in styles.css under html.safe-test,
+    // switched by an orientation media query, so they can never go stale.
+    if (SAFE_TEST) document.documentElement.classList.add('safe-test');
+  }
+
+  // ===================================================================
+  // Boot
+  // ===================================================================
+  function init() {
+    dom.credit = $('m-credit');
+    dom.bet = $('m-bet');
+    dom.win = $('m-win');
+    dom.point = $('m-point');
+    dom.fx = $('fx');
+    dom.tray = $('tray');
+
+    buildNumbers();
+    buildProps();
+    buildBonusPips();
+    buildDice();
+    buildPuck();
+    applySafeOverride();
+
+    var felt = $('felt');
+    felt.addEventListener('pointerdown', onFeltDown);
+    felt.addEventListener('click', onFeltClick);
+    felt.addEventListener('contextmenu', onFeltContext);
+
+    // sound unlock on any trusted gesture
+    ['pointerdown', 'pointerup', 'touchend', 'keydown'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) { Sound.unlock(e); }, { capture: true, passive: true });
+    });
+    // no pinch / double-tap zoom, no stray scrolling outside the menu
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+    document.addEventListener('touchmove', function (e) {
+      if (e.cancelable && (!e.target.closest || !e.target.closest('.sheet-body'))) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('contextmenu', function (e) {
+      if (!e.target.closest || !e.target.closest('.sheet-body')) e.preventDefault();
+    });
+
+    document.querySelectorAll('.tchip').forEach(function (t) { t.addEventListener('click', onChip); });
+    $('btn-roll').addEventListener('click', doRoll);
+    $('btn-repeat').addEventListener('click', onRepeat);
+    $('btn-undo').addEventListener('click', onUndo);
+    $('btn-clear').addEventListener('click', onClear);
+    $('btn-bets').addEventListener('click', onBetsToggle);
+    $('btn-menu').addEventListener('click', openMenu);
+    $('menu-close').addEventListener('click', closeMenu);
+    $('menu').addEventListener('click', function (e) { if (e.target === $('menu')) closeMenu(); });
+    $('btn-sound').addEventListener('click', toggleSound);
+    $('btn-newgame').addEventListener('click', function () {
+      confirmDialog('New game?', 'This clears the table and resets your credit to $1,000.', 'New Game', newGame);
+    });
+
+    // popover backdrop: close only on a fresh press that starts on it
+    $('pop-backdrop').addEventListener('pointerdown', function (e) { e.preventDefault(); closePopover(); });
+
+    document.querySelectorAll('#odds .odds-opt').forEach(function (b) {
+      b.addEventListener('click', function () { chooseOdds(parseInt(b.dataset.m, 10)); });
+    });
+    $('odds-keep').addEventListener('click', closeOdds);
+    $('dlg-cancel').addEventListener('click', closeDialog);
+    $('dlg-ok').addEventListener('click', function () { var f = dlgOk; closeDialog(); if (f) f(); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        if (ui.pop) closePopover();
+        else if (!$('dialog').hidden) closeDialog();
+        else if (ui.odds) closeOdds();
+        else if (!$('menu').hidden) closeMenu();
+      }
+    });
+
+    function onViewportChange() {
+      applySafeOverride();
+      // the viewport may still be settling during the event; recompute next frame too
+      requestAnimationFrame(function () { applySafeOverride(); requestAnimationFrame(applySafeOverride); });
+      closePopover();
+    }
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', onViewportChange);
+    if (landscapeMQ) {
+      if (landscapeMQ.addEventListener) landscapeMQ.addEventListener('change', onViewportChange);
+      else if (landscapeMQ.addListener) landscapeMQ.addListener(onViewportChange);
+    }
+
+    render();
+
+    if (DEBUG) {
+      window.__craps = {
+        game: game,
+        queueRolls: function (pairs) {
+          (pairs || []).forEach(function (p) {
+            var a = p[0] | 0, b = p[1] | 0;
+            if (a < 1 || a > 6 || b < 1 || b > 6) throw new Error('Dice must be 1-6: ' + JSON.stringify(p));
+            rollQueue.push((a - 0.5) / 6, (b - 0.5) / 6);
+          });
+          return rollQueue.length / 2;
+        },
+        render: render,
+        roll: doRoll,
+        isRolling: function () { return ui.rolling; },
+        selectChip: function (v) { if (CHIPS.indexOf(v) !== -1) { ui.chip = v; renderButtons(); } },
+      };
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
