@@ -1,4 +1,4 @@
-const CACHE = 'craps-v4-bubble';
+const CACHE = 'craps-v5-bubble';
 const ASSETS = [
   '.',
   'index.html',

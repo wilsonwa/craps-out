@@ -15,6 +15,7 @@
   var POINTS = [4, 5, 6, 8, 9, 10];
   var HORN = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
   var CHIPS = [1, 5, 25, 100, 500];
+  var START_BANKROLL = 10000; // also the New Game reset value (engine reset() reuses it)
   var HOLD_MS = 420;
   var DRAG_TOL = 14; // px (Euclidean) a press on a draggable bet must travel to become a drag
   var TUMBLE_MS = 900;
@@ -65,8 +66,8 @@
   var rollQueue = [];
 
   var game = DEBUG
-    ? new CrapsGame(1000, { randomFn: function () { return rollQueue.length ? rollQueue.shift() : Math.random(); } })
-    : new CrapsGame(1000);
+    ? new CrapsGame(START_BANKROLL, { randomFn: function () { return rollQueue.length ? rollQueue.shift() : Math.random(); } })
+    : new CrapsGame(START_BANKROLL);
 
   // ===================================================================
   // State
@@ -663,7 +664,7 @@
 
   function checkBroke() {
     if (game.getBalance() < 1 && game.getTotalAtRisk() === 0) {
-      confirmDialog('Out of credit', 'You have no credit left and nothing on the table. Start a new game with $1,000?', 'New Game', newGame);
+      confirmDialog('Out of credit', 'You have no credit left and nothing on the table. Start a new game with ' + money(START_BANKROLL) + '?', 'New Game', newGame);
     }
   }
 
@@ -875,9 +876,10 @@
   }
 
   function closeOdds() {
-    if (!ui.odds) { $('odds').hidden = true; return; }
+    if (!ui.odds) { $('odds').hidden = true; healViewport(); return; }
     ui.odds = null;
     $('odds').hidden = true;
+    healViewport();
     render();
     setTimeout(function () { nextOffer(); if (!ui.odds) checkBroke(); }, 0);
   }
@@ -953,10 +955,15 @@
     });
     $('pop-backdrop').hidden = false;
     pop.hidden = false;
-    // position near the anchor, inside the safe viewport
-    var r = anchor.getBoundingClientRect();
+    // position near the anchor, inside the safe area. The popover is absolute
+    // inside the fixed <body>, so convert viewport coords to body coords
+    // (body sits at 0,0, so this is normally a no-op) and clamp to the body's
+    // size, which is the pinned shell height in an installed iPhone app.
+    var br = document.body.getBoundingClientRect();
+    var a = anchor.getBoundingClientRect();
+    var r = { left: a.left - br.left, top: a.top - br.top, bottom: a.bottom - br.top, width: a.width };
     var pw = pop.offsetWidth, ph = pop.offsetHeight;
-    var vw = window.innerWidth, vh = window.innerHeight;
+    var vw = br.width, vh = br.height;
     var cs = getComputedStyle(document.documentElement);
     var st = parseFloat(cs.getPropertyValue('--safe-top')) || 0;
     var sb = parseFloat(cs.getPropertyValue('--safe-bottom')) || 0;
@@ -980,6 +987,7 @@
     ui.pop = null;
     $('popover').hidden = true;
     $('pop-backdrop').hidden = true;
+    healViewport();
   }
 
   // ===================================================================
@@ -1149,10 +1157,27 @@
   function openMenu() {
     closePopover();
     renderMenu();
+    renderDiag();
     $('menu').hidden = false;
     $('sheet-body').scrollTop = 0;
   }
-  function closeMenu() { $('menu').hidden = true; }
+  function closeMenu() { $('menu').hidden = true; healViewport(); }
+
+  // One muted line at the bottom of the menu, for remote debugging from screenshots.
+  function renderDiag() {
+    var cs = getComputedStyle(document.documentElement);
+    function px(n) { var v = parseFloat(cs.getPropertyValue(n)); return isNaN(v) ? '?' : String(Math.round(v)); }
+    var vv = window.visualViewport;
+    var dm = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    var appH = cs.getPropertyValue('--app-h').trim();
+    $('diag').textContent = 'v5 · win ' + window.innerWidth + '×' + window.innerHeight +
+      ' · vv ' + (vv ? Math.round(vv.width) + '×' + Math.round(vv.height) + ' @' + Math.round(vv.offsetTop) : 'n/a') +
+      ' · scr ' + screen.width + '×' + screen.height +
+      ' · safe ' + px('--safe-top') + '/' + px('--safe-right') + '/' + px('--safe-bottom') + '/' + px('--safe-left') +
+      ' · sy ' + Math.round(window.scrollY || 0) +
+      ' · standalone ' + String(navigator.standalone) + '/' + (dm ? 'dm' : 'no-dm') +
+      ' · h ' + (appH || '-');
+  }
 
   function renderMenu() {
     var b = bets(), list = $('menu-bets');
@@ -1232,7 +1257,7 @@
     $('dialog').hidden = false;
     try { $('dlg-ok').focus({ preventScroll: true }); } catch (e) { /* ignore */ }
   }
-  function closeDialog() { $('dialog').hidden = true; dlgOk = null; }
+  function closeDialog() { $('dialog').hidden = true; dlgOk = null; healViewport(); }
 
   function newGame() {
     closeMenu(); closePopover();
@@ -1260,6 +1285,28 @@
   }
 
   // ===================================================================
+  // Installed-iPhone shell height pin
+  // ===================================================================
+  // In an installed iPhone app (black-translucent status bar) WebKit can shrink
+  // the layout viewport by the top inset while it still starts at the top of
+  // the screen, so 100% / 100dvh / inset:0 end one inset short. Pin the shell
+  // to the physical screen height instead. Everywhere else --app-h stays unset
+  // and the CSS falls back to today's values.
+  var PIN_SHELL = navigator.standalone === true && /iPhone/.test(navigator.userAgent || '');
+  function pinShellHeight() {
+    if (!PIN_SHELL) return;
+    var landscape = landscapeMQ ? landscapeMQ.matches : window.innerWidth > window.innerHeight;
+    // iOS reports screen.width/height in portrait terms and does not swap them on rotation
+    var h = landscape ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+  }
+  // After an overlay closes: undo any scroll WebKit left behind and re-pin.
+  function healViewport() {
+    try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+    pinShellHeight();
+  }
+
+  // ===================================================================
   // Boot
   // ===================================================================
   function init() {
@@ -1276,6 +1323,7 @@
     buildDice();
     buildPuck();
     applySafeOverride();
+    pinShellHeight();
 
     var felt = $('felt');
     felt.addEventListener('pointerdown', onFeltDown);
@@ -1307,7 +1355,7 @@
     $('menu').addEventListener('click', function (e) { if (e.target === $('menu')) closeMenu(); });
     $('btn-sound').addEventListener('click', toggleSound);
     $('btn-newgame').addEventListener('click', function () {
-      confirmDialog('New game?', 'This clears the table and resets your credit to $1,000.', 'New Game', newGame);
+      confirmDialog('New game?', 'This clears the table and resets your credit to ' + money(START_BANKROLL) + '.', 'New Game', newGame);
     });
 
     // popover backdrop: close only on a fresh press that starts on it
@@ -1331,8 +1379,12 @@
 
     function onViewportChange() {
       applySafeOverride();
+      pinShellHeight();
       // the viewport may still be settling during the event; recompute next frame too
-      requestAnimationFrame(function () { applySafeOverride(); requestAnimationFrame(applySafeOverride); });
+      requestAnimationFrame(function () {
+        applySafeOverride(); pinShellHeight();
+        requestAnimationFrame(function () { applySafeOverride(); pinShellHeight(); });
+      });
       closePopover();
     }
     window.addEventListener('resize', onViewportChange);
