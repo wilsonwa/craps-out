@@ -32,7 +32,7 @@
   --chip: 26px;
   --box-chip: 22px;
   --die: 46px;
-  --tray-chip: 46px;
+  --tray-chip: min(46px, calc((min(100vw, 640px) - 96px) / 7.3)); /* 6 chips + plaque across */
 
   --serif: ui-serif, Georgia, "Times New Roman", serif;
   --sans: system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -127,12 +127,13 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
     --chip: 24px;
     --box-chip: 21px;
     --die: 56px;
+    --rail: clamp(196px, 25vw, 270px);
     --tray-chip: 36px;
   }
   .app {
     max-width: 1180px;
     max-height: 760px;
-    grid-template-columns: minmax(0, 1fr) clamp(196px, 25vw, 270px);
+    grid-template-columns: minmax(0, 1fr) var(--rail);
     grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "felt meters"
@@ -825,6 +826,53 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
 .c1000 { --c: #f0b400; --c2: #8a6300; --t: #1b1200; }
 .c5 b, .c25 b, .c100 b, .c500 b { text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
 
+/* $5K "flag" chip — cream centre, red and blue edge inserts */
+.c5000 {
+  --c: #f6f1e1;
+  --t: #1c2f7a;
+  background:
+    radial-gradient(circle closest-side, var(--c) 0 52%, #1c2f7a 54% 58%, rgba(255, 255, 255, 0.95) 60% 65%, transparent 66%),
+    repeating-conic-gradient(from 7deg, #c9212b 0deg 30deg, #fbf6e8 30deg 45deg, #1f3fa0 45deg 75deg, #fbf6e8 75deg 90deg);
+}
+
+/* $10K plaque — a rectangular marker instead of a round chip, with a
+   diamond emblem. On the felt it keeps a round chip's footprint (the
+   negative side margin lets it overhang) so no spot layout changes. */
+.c10000 {
+  --t: #f8e7ad;
+  --gem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 42'%3E%3Cg stroke='%23f4fdff' stroke-width='.9' stroke-linejoin='round'%3E%3Cpath fill='%2362cdf7' d='M1 15 11 3l6 12z'/%3E%3Cpath fill='%23aee9ff' d='M11 3h13l-7 12z'/%3E%3Cpath fill='%23effcff' d='M24 3l7 12H17z'/%3E%3Cpath fill='%2396e0ff' d='M24 3h13l-6 12z'/%3E%3Cpath fill='%2341b4ec' d='M37 3l10 12H31z'/%3E%3Cpath fill='%233aa7e3' d='M1 15h16l7 25z'/%3E%3Cpath fill='%2388dbff' d='M17 15h14l-7 25z'/%3E%3Cpath fill='%231f84c9' d='M31 15h16L24 40z'/%3E%3C/g%3E%3C/svg%3E");
+  width: calc(var(--cs) * 1.16);
+  height: calc(var(--cs) * 0.84);
+  margin: calc(var(--cs) * 0.08) calc(var(--cs) * -0.08);
+  border-radius: calc(var(--cs) * 0.15);
+  background:
+    linear-gradient(112deg, transparent 34%, rgba(255, 244, 200, 0.2) 47%, transparent 60%),
+    linear-gradient(#2c241c, #0c0907);
+  box-shadow:
+    inset 0 0 0 calc(var(--cs) * 0.05) #0c0907,
+    inset 0 0 0 calc(var(--cs) * 0.085) #c9a24a,
+    0 0 0 1.5px #f1d587,
+    0 0 0 2.5px rgba(0, 0, 0, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.65);
+}
+.c10000 b { position: relative; z-index: 1; text-shadow: 0 1px 1px #000; }
+.c10000::before {
+  content: "";
+  position: absolute;
+  inset: 16% 22%;
+  background: var(--gem) center / contain no-repeat;
+}
+.chip.c10000::before { opacity: 0.3; } /* watermark behind the bet amount */
+/* narrow spots: a compact plaque tucked against the edge so it covers no more
+   of the label than a round chip would */
+.prop .chip.c10000, .box .lay .chip.c10000, .box .place .chip.c10000 {
+  width: calc(var(--cs) * 0.98);
+  height: calc(var(--cs) * 0.7);
+  margin: calc(var(--cs) * 0.15) -1.5px calc(var(--cs) * 0.15) 0;
+}
+/* travelled come / don't-come bets sit two to a lane: stay inside the box */
+.box .buy .travel .chip.c10000 { width: var(--cs); height: calc(var(--cs) * 0.76); margin: calc(var(--cs) * 0.12) 0; }
+
 .chip.is-off b { transform: translateY(calc(var(--cs) * -0.2)); }
 .chip .off {
   position: absolute;
@@ -896,6 +944,39 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
     0 4px 6px rgba(0, 0, 0, 0.7);
 }
 .tchip.poor { opacity: 0.45; }
+/* tray plaque: emblem in the middle, value in two corners */
+.tchip.c10000 {
+  width: calc(var(--cs) * 1.3);
+  height: calc(var(--cs) * 0.9);
+  margin: 0;
+  border-radius: calc(var(--cs) * 0.13);
+}
+.tchip.c10000::before { inset: 23% 31%; filter: drop-shadow(0 0 3px rgba(120, 215, 255, 0.55)); }
+.tchip.c10000 b { position: absolute; font-size: calc(var(--cs) * 0.2); letter-spacing: -0.01em; }
+.tchip.c10000 b:first-of-type { top: 12%; left: 8%; }
+.tchip.c10000 b:last-of-type { bottom: 12%; right: 8%; }
+.tchip.c10000::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(112deg, transparent 42%, rgba(255, 255, 255, 0.42) 50%, transparent 58%) 130% 0 / 260% 100% no-repeat;
+  pointer-events: none;
+}
+.tchip.c10000.sel {
+  box-shadow:
+    inset 0 0 0 calc(var(--cs) * 0.05) #0c0907,
+    inset 0 0 0 calc(var(--cs) * 0.085) #c9a24a,
+    0 0 0 2px #fff8de,
+    0 0 0 4px var(--gold),
+    0 0 14px 3px rgba(255, 215, 100, 0.75),
+    0 4px 6px rgba(0, 0, 0, 0.7);
+}
+.tchip.c10000.sel::after { animation: plaqueSheen 3.2s ease-in-out infinite; }
+@keyframes plaqueSheen {
+  0%, 35% { background-position: 130% 0; }
+  75%, 100% { background-position: -30% 0; }
+}
 .tray-drop {
   position: absolute;
   inset: 0;
@@ -909,12 +990,26 @@ button:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
   color: #1b1200;
   background: rgba(255, 215, 100, 0.85);
   pointer-events: none;
+  z-index: 2; /* above the raised selected chip */
 }
 body.dragging .tray-drop { display: grid; background: rgba(255, 215, 100, 0.45); color: #fff; }
 body.dragging .tray.over .tray-drop { background: rgba(255, 215, 100, 0.9); color: #1b1200; }
 
-@media (orientation: landscape) {
-  .tray { padding: 5px 4px; }
+.tchip.sel { z-index: 1; } /* keep the selection ring above tightly packed neighbours */
+
+/* The landscape rail is too narrow for seven across. Tall windows (tablet,
+   desktop) stack two rows — four chips, then 1K · 5K · plaque. Phones have no
+   height to spare for that; see "Phone landscape" at the end of this file. */
+@media (orientation: landscape) and (min-height: 480px) {
+  .tray {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    justify-content: space-evenly;
+    justify-items: center;
+    gap: 10px 4px; /* room for the raised, ringed selection between rows */
+    padding: 7px 4px;
+  }
+  .tchip.c10000 { grid-column: span 2; width: calc(var(--cs) * 1.55); height: calc(var(--cs) * 0.96); }
 }
 
 /* ===================================================================
@@ -1272,13 +1367,13 @@ body.rolling .roll { filter: grayscale(0.5) brightness(0.75); }
 }
 /* Short portrait windows */
 @media (orientation: portrait) and (max-height: 760px) {
-  :root { --die: 40px; --tray-chip: 40px; }
+  :root { --die: 40px; --tray-chip: min(40px, calc((100vw - 96px) / 7.3)); }
   .controls { min-height: 46px; }
   .total { font-size: 26px; }
 }
 /* Short landscape (852x393 class) */
 @media (orientation: landscape) and (max-height: 400px) {
-  :root { --die: 44px; --tray-chip: 34px; --chip: 22px; --box-chip: 20px; }
+  :root { --die: 44px; --chip: 22px; --box-chip: 20px; }
   .m-val { font-size: 14px; }
   .meter { padding: 2px 6px 3px; }
   .controls { grid-template-rows: 36px 48px; }
@@ -1301,6 +1396,40 @@ body.rolling .roll { filter: grayscale(0.5) brightness(0.75); }
   .bonus-spot { padding-right: 26px; gap: 4px; }
   .pips b { width: 13px; height: 13px; font-size: 7.5px; }
 }
+/* Phone landscape: the chip tray stands beside the dice as a two-wide rack —
+   5 · 25 / 100 · 500 / 1K · 5K / plaque — so the chips stay full size.
+   --die is derived from what is left of the rail so the dome always fits. */
+@media (orientation: landscape) and (max-height: 479px) {
+  :root {
+    --tray-chip: clamp(30px, calc((var(--rail) - 145px) / 2), 36px);
+    --tray-w: calc(var(--tray-chip) * 2 + 18px);
+    --die: clamp(36px, calc((var(--rail) - var(--tray-w) - 39px) / 2), 50px);
+  }
+  .app {
+    grid-template-columns: minmax(0, 1fr) calc(var(--rail) - var(--tray-w) - var(--gap)) var(--tray-w);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "felt meters meters"
+      "felt bubble tray"
+      "felt controls controls";
+  }
+  .bubble { padding: 6px 4px; }
+  .dome { padding: 6px 8px; }
+  .readout { flex-direction: column; align-items: center; gap: 3px; }
+  .caption { letter-spacing: 0.06em; }
+  .tray {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: space-evenly;
+    align-content: space-evenly;
+    justify-items: center;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 3px;
+  }
+  .tchip.c10000 { grid-column: span 2; width: calc(var(--cs) * 1.75); height: calc(var(--cs) * 0.95); }
+  .tray-drop { padding: 6px; text-align: center; font-size: 11px; line-height: 1.25; }
+}
 /* Large desktop windows */
 @media (min-width: 1100px) and (min-height: 700px) and (orientation: landscape) {
   :root { --chip: 30px; --box-chip: 26px; --die: 54px; --tray-chip: 46px; }
@@ -1315,6 +1444,7 @@ body.rolling .roll { filter: grayscale(0.5) brightness(0.75); }
 @media (prefers-reduced-motion: reduce) {
   .cube { transition-duration: 0.01s !important; }
   .die.hop, .dome.shake, .puck.pop, .chip.drop, .rchip.new { animation: none !important; }
+  .tchip.c10000.sel::after { animation: none !important; }
   .float { animation-duration: 1.4s; }
   .toast, .popover, .sheet, .modal, .sheet-wrap { animation: none !important; }
 }

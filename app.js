@@ -14,7 +14,7 @@
   // ===================================================================
   var POINTS = [4, 5, 6, 8, 9, 10];
   var HORN = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
-  var CHIPS = [1, 5, 25, 100, 500];
+  var CHIPS = [5, 25, 100, 500, 1000, 5000, 10000];
   var START_BANKROLL = 10000; // also the New Game reset value (engine reset() reuses it)
   var HOLD_MS = 420;
   var DRAG_TOL = 14; // px (Euclidean) a press on a draggable bet must travel to become a drag
@@ -114,6 +114,8 @@
     return (neg ? '−' : '') + '$' + s;
   }
   function chipClass(a) {
+    if (a >= 10000) return 'c10000'; // rectangular plaque
+    if (a >= 5000) return 'c5000';
     if (a >= 1000) return 'c1000';
     if (a >= 500) return 'c500';
     if (a >= 100) return 'c100';
@@ -366,6 +368,7 @@
 
     renderBonus(b);
     renderButtons();
+    fitMeters();
     if (!$('menu').hidden) renderMenu();
   }
 
@@ -457,6 +460,19 @@
     f.style.top = (r.top + r.height / 2) + 'px';
     dom.fx.appendChild(f);
     setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1300);
+  }
+
+  // Big chips make six- and seven-figure meters possible; shrink the type
+  // instead of letting the value clip at the edge of its box.
+  function fitMeters() {
+    [dom.credit, dom.bet, dom.win].forEach(function (m) {
+      if (!m) return;
+      m.style.fontSize = '';
+      var room = m.clientWidth, need = m.scrollWidth;
+      if (!room || need <= room) return;
+      var base = parseFloat(getComputedStyle(m).fontSize) || 16;
+      m.style.fontSize = Math.max(9, Math.floor(base * room / need * 10) / 10) + 'px';
+    });
   }
 
   function restart(node, cls) {
@@ -582,6 +598,7 @@
     restart(w, 'bump');
     dom.credit.textContent = money(game.getBalance(), true);
     dom.bet.textContent = money(game.getTotalAtRisk());
+    fitMeters();
 
     // flashes, floating amounts, departing chips
     var winSpots = {};
@@ -1383,7 +1400,7 @@
       // the viewport may still be settling during the event; recompute next frame too
       requestAnimationFrame(function () {
         applySafeOverride(); pinShellHeight();
-        requestAnimationFrame(function () { applySafeOverride(); pinShellHeight(); });
+        requestAnimationFrame(function () { applySafeOverride(); pinShellHeight(); fitMeters(); });
       });
       closePopover();
     }
