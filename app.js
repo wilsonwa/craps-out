@@ -15,11 +15,12 @@
   var POINTS = [4, 5, 6, 8, 9, 10];
   var HORN = ['horn-2', 'horn-3', 'horn-11', 'horn-12'];
   var CHIPS = [5, 25, 100, 500, 1000, 5000, 10000];
-  var START_BANKROLL = 10000; // also the New Game reset value (engine reset() reuses it)
+  var START_BANKROLL = 50000; // also the New Game reset value (engine reset() reuses it)
   var HOLD_MS = 420;
   var DRAG_TOL = 14; // px (Euclidean) a press on a draggable bet must travel to become a drag
   var TUMBLE_MS = 900;
-  var STORE = { sound: 'craps.sound', chip: 'craps.chip' };
+  var STORE = { sound: 'craps.sound', chip: 'craps.chip', million: 'craps.million' };
+  var MILLION = 1000000; // easter egg: one-time celebration the first time credit reaches this
 
   var TRUE_ODDS = { 4: '2:1', 5: '3:2', 6: '6:5', 8: '6:5', 9: '3:2', 10: '2:1' };
   var PLACE_PAY = { 4: '9:5', 5: '7:5', 6: '7:6', 8: '7:6', 9: '7:5', 10: '9:5' };
@@ -223,6 +224,14 @@
         this.tone(220, t + 0.16, 0.32, 'sawtooth', 0.07, 140);
       } else if (kind === 'tick') {
         this.tone(1200, t, 0.04, 'sine', 0.06);
+      } else if (kind === 'fanfare') {
+        // da-da-da-DAAA, then a sparkle run
+        [[523.25, 0, 0.14], [523.25, 0.16, 0.14], [523.25, 0.32, 0.14], [698.46, 0.5, 0.6],
+         [622.25, 1.15, 0.18], [698.46, 1.35, 0.18], [880, 1.55, 0.9]].forEach(function (n) {
+          Sound.tone(n[0], t + n[1], n[2], 'triangle', 0.2);
+          Sound.tone(n[0] * 2, t + n[1], n[2], 'sine', 0.06);
+        });
+        for (i = 0; i < 10; i++) this.tone(1800 + i * 180, t + 2.5 + i * 0.05, 0.08, 'sine', 0.05);
       }
     },
   };
@@ -651,6 +660,7 @@
       ui.rolling = false;
       document.body.classList.remove('rolling');
       render();
+      checkMillion();
       nextOffer();
       if (!ui.odds) checkBroke();
     }, reduceMotion.matches ? 150 : 560);
@@ -677,6 +687,70 @@
     res.returned.forEach(function (r) { items.push({ c: '', t: name(r.betType) + ' returned ' + money(r.amount) }); });
     ui.log.unshift({ n: game.getGameState().totalRolls, dice: res.dice, cap: caption(res)[0], net: res.net, items: items });
     if (ui.log.length > 200) ui.log.length = 200;
+  }
+
+  // ===================================================================
+  // Easter egg: first time credit hits $1,000,000 — balloons + confetti, once ever
+  // ===================================================================
+  function millionDone() {
+    try { return localStorage.getItem(STORE.million) === '1'; } catch (e) { return !!ui.millionDone; }
+  }
+  function checkMillion() {
+    if (game.getBalance() < MILLION || ui.millionDone || millionDone()) return;
+    ui.millionDone = true;
+    try { localStorage.setItem(STORE.million, '1'); } catch (e) { /* ignore */ }
+    celebrate();
+  }
+
+  function celebrate() {
+    var old = $('party');
+    if (old) old.parentNode.removeChild(old);
+    var layer = el('div', 'party');
+    layer.id = 'party';
+    layer.setAttribute('role', 'alert');
+    var banner = el('div', 'party-banner');
+    banner.innerHTML = '<span class="pb-top">Jackpot!</span><span class="pb-big">MILLIONAIRE</span>' +
+      '<span class="pb-sub">' + money(game.getBalance(), true) + ' &middot; tap to keep rolling</span>';
+    layer.appendChild(banner);
+
+    if (!reduceMotion.matches) {
+      var colors = ['#f2c34a', '#e8473b', '#2fa86a', '#3b82f6', '#a855f7', '#ffffff', '#ff7ab6'];
+      var i, n;
+      for (i = 0; i < 14; i++) {
+        var b = el('span', 'balloon');
+        var c = colors[i % colors.length];
+        b.style.setProperty('--bc', c === '#ffffff' ? '#f7efd8' : c);
+        b.style.left = (Math.random() * 92) + '%';
+        b.style.setProperty('--sway', (Math.random() * 60 - 30).toFixed(0) + 'px');
+        b.style.setProperty('--s', (0.75 + Math.random() * 0.5).toFixed(2));
+        b.style.animationDuration = (5 + Math.random() * 3).toFixed(2) + 's';
+        b.style.animationDelay = (Math.random() * 1.6).toFixed(2) + 's';
+        layer.appendChild(b);
+      }
+      for (n = 0; n < 120; n++) {
+        var p = el('i', 'confetti');
+        p.style.background = colors[n % colors.length];
+        p.style.left = (Math.random() * 100) + '%';
+        p.style.setProperty('--dx', (Math.random() * 160 - 80).toFixed(0) + 'px');
+        p.style.setProperty('--rot', (Math.random() * 1080 - 540).toFixed(0) + 'deg');
+        p.style.animationDuration = (2.6 + Math.random() * 2.4).toFixed(2) + 's';
+        p.style.animationDelay = (Math.random() * 1.8).toFixed(2) + 's';
+        if (n % 3 === 0) p.style.borderRadius = '50%';
+        layer.appendChild(p);
+      }
+    }
+    document.body.appendChild(layer);
+    Sound.play('fanfare');
+
+    var gone = false;
+    function dismiss() {
+      if (gone) return;
+      gone = true;
+      layer.classList.add('out');
+      setTimeout(function () { if (layer.parentNode) layer.parentNode.removeChild(layer); }, 500);
+    }
+    layer.addEventListener('pointerdown', function (e) { e.preventDefault(); dismiss(); });
+    setTimeout(dismiss, 9000);
   }
 
   function checkBroke() {
@@ -1187,7 +1261,7 @@
     var vv = window.visualViewport;
     var dm = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
     var appH = cs.getPropertyValue('--app-h').trim();
-    $('diag').textContent = 'v5 · win ' + window.innerWidth + '×' + window.innerHeight +
+    $('diag').textContent = 'v7 · win ' + window.innerWidth + '×' + window.innerHeight +
       ' · vv ' + (vv ? Math.round(vv.width) + '×' + Math.round(vv.height) + ' @' + Math.round(vv.offsetTop) : 'n/a') +
       ' · scr ' + screen.width + '×' + screen.height +
       ' · safe ' + px('--safe-top') + '/' + px('--safe-right') + '/' + px('--safe-bottom') + '/' + px('--safe-left') +
@@ -1427,6 +1501,8 @@
         render: render,
         roll: doRoll,
         isRolling: function () { return ui.rolling; },
+        celebrate: celebrate,
+        resetMillion: function () { ui.millionDone = false; try { localStorage.removeItem(STORE.million); } catch (e) { /* ignore */ } },
         selectChip: function (v) { if (CHIPS.indexOf(v) !== -1) { ui.chip = v; renderButtons(); } },
       };
     }
